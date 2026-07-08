@@ -76,14 +76,26 @@
 
 body {
   background-color: var(--color-background);
-  /* playful polka-dot grid: warm dots at 50% opacity on beige */
-  background-image: radial-gradient(rgb(213 184 133 / 0.5) 1.5px, transparent 1.5px);
-  background-size: 26px 26px;
   color: var(--color-ink);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   /* house style: everything lowercase, no exceptions in rendered copy */
   text-transform: lowercase;
+}
+
+/* static backdrop: beige polka-dot layer pinned to the viewport so all
+   content scrolls above it (more reliable than background-attachment:
+   fixed, which mobile Safari ignores) */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-color: var(--color-background);
+  /* playful polka-dot grid: warm dots at 50% opacity on beige */
+  background-image: radial-gradient(rgb(213 184 133 / 0.5) 1.5px, transparent 1.5px);
+  background-size: 26px 26px;
 }
 
 /* keep case where it's load-bearing: user input and code identifiers */
