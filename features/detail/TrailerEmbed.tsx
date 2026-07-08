@@ -12,7 +12,7 @@ export function TrailerEmbed({ videoKey, title }: { videoKey: string; title: str
     <div className="relative aspect-video overflow-hidden rounded-3xl border-2 border-border bg-ink shadow-soft">
       {playing ? (
         <iframe
-          src={`https://www.youtube.com/embed/${videoKey}?autoplay=1&rel=0`}
+          src={`https://www.youtube-nocookie.com/embed/${videoKey}?autoplay=1&rel=0`}
           title={`${title} trailer`}
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
           allowFullScreen
