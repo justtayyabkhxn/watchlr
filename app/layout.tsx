@@ -11,8 +11,8 @@ const bricolage = Bricolage_Grotesque({
 
 export const metadata: Metadata = {
   title: {
-    default: "Watchr — track what you watch",
-    template: "%s · Watchr",
+    default: "Watchlr — track what you watch",
+    template: "%s · Watchlr",
   },
   description:
     "A movie & TV tracker with AI summaries, ending explanations, and recommendations.",

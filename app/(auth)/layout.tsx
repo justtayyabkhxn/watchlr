@@ -39,7 +39,7 @@ export default async function AuthLayout({
         <span className="grid size-9 -rotate-6 place-items-center rounded-xl border-2 border-ink bg-accent shadow-offset-xs transition-all duration-200 group-hover:animate-wiggle group-hover:bg-accent-soft">
           <Clapperboard className="size-5" strokeWidth={2.5} aria-hidden />
         </span>
-        <span className="transition-transform duration-200 group-hover:-rotate-2">watchr</span>
+        <span className="transition-transform duration-200 group-hover:-rotate-2">watchlr</span>
       </Link>
 
       <div className="relative z-10 w-full max-w-sm">

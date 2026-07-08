@@ -29,7 +29,7 @@ export function Footer() {
         aria-hidden
         className="pointer-events-none absolute inset-0 flex select-none items-center justify-center whitespace-nowrap text-[24vw] font-black leading-none text-[#c96f28] opacity-15"
       >
-        watchr
+        watchlr
       </p>
 
       {/* mobile: brand full-width, explore + account side by side below */}
@@ -44,7 +44,7 @@ export function Footer() {
               <Clapperboard className="size-4.5" strokeWidth={2.5} aria-hidden />
             </span>
             <span className="transition-transform duration-200 group-hover:-rotate-2 group-hover:scale-105">
-              watchr
+              watchlr
             </span>
           </Link>
           <p className="mt-3 text-sm leading-relaxed text-muted">
@@ -78,7 +78,7 @@ export function Footer() {
 
       <div className="relative border-t-2 border-border">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-6 py-5 text-xs font-semibold text-muted">
-          <p>© {new Date().getFullYear()} Watchr — made for people who watch too much.</p>
+          <p>© {new Date().getFullYear()} Watchlr — made for people who watch too much.</p>
           <p>
             Crafted by{" "}
             <a

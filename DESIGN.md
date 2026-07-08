@@ -1,6 +1,6 @@
-# watchr design language
+# watchlr design language
 
-The single source of truth for how watchr looks and feels. Read this before
+The single source of truth for how watchlr looks and feels. Read this before
 touching any UI. When in doubt: warmer, wonkier, more handcrafted.
 
 **Vibe in one line:** a playful, childish, sticker-covered movie zine — the
@@ -116,7 +116,7 @@ only hand-roll on `<Link>`s styled as buttons.
   Sparkle separators (`animate-spin-slow`).
 - **Sliding nav pill:** active nav state is a tilted sticker pill moved
   between links with framer `layoutId` + spring.
-- **Watermark wordmark:** footer paints one giant lowercase "watchr" in solid
+- **Watermark wordmark:** footer paints one giant lowercase "watchlr" in solid
   `accent-soft`, absolutely positioned behind content, `aria-hidden` +
   `pointer-events-none`.
 - **Poster cards:** framer spring `whileHover={{ y: -6, rotate: ±1.5 }}`,

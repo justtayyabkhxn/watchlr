@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Hand-rolled chart primitives on the Watchr palette.
+ * Hand-rolled chart primitives on the Watchlr palette.
  * Single-measure magnitude charts → one hue (accent), sequential ramp
  * for the heatmap, direct labels + native tooltips on every mark.
  */

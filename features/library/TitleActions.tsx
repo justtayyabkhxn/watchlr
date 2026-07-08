@@ -69,7 +69,7 @@ export function StarRating({
       </div>
       <p className="mt-1 text-xs font-semibold text-muted">
         {data?.mine ? `You rated it ${data.mine}/10` : "Rate it"}
-        {data?.count ? ` · watchr avg ${data.average?.toFixed(1)} (${data.count})` : ""}
+        {data?.count ? ` · watchlr avg ${data.average?.toFixed(1)} (${data.count})` : ""}
       </p>
     </div>
   );

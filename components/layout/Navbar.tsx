@@ -61,7 +61,7 @@ export function Navbar() {
             <Clapperboard className="size-4.5" strokeWidth={2.5} aria-hidden />
           </span>
           <span className="transition-transform duration-200 group-hover:-rotate-2 group-hover:scale-105">
-            watchr
+            watchlr
           </span>
         </Link>
 

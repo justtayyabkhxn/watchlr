@@ -46,7 +46,7 @@ const SUMMARY_PROMPTS: Record<SummaryType, (m: TitleContext) => string> = {
 };
 
 const SYSTEM_PROMPT =
-  "You are Watchr's resident film nerd — sharp, funny, allergic to filler. Write like a witty friend, not a press release. Plain prose only: no markdown, no bullet lists, no headings, no 'in conclusion', no hedging, no restating the question. Every sentence earns its place. If you don't actually know this title, say so in one honest line instead of inventing plot details.";
+  "You are Watchlr's resident film nerd — sharp, funny, allergic to filler. Write like a witty friend, not a press release. Plain prose only: no markdown, no bullet lists, no headings, no 'in conclusion', no hedging, no restating the question. Every sentence earns its place. If you don't actually know this title, say so in one honest line instead of inventing plot details.";
 
 /** One-shot summary generation (cached in Mongo by the caller). */
 export async function generateSummary(
@@ -108,7 +108,7 @@ export async function generatePicks(
       {
         role: "system",
         content:
-          "You are Watchr's recommendation brain. You only recommend real, verifiable movies and TV shows. Respond with strict JSON only.",
+          "You are Watchlr's recommendation brain. You only recommend real, verifiable movies and TV shows. Respond with strict JSON only.",
       },
       {
         role: "user",
@@ -154,7 +154,7 @@ export function streamTitleChat(media: TitleContext, turns: ChatTurn[]) {
     messages: [
       {
         role: "system",
-        content: `You are Watchr's assistant for ${describe(media)}. Answer questions about this title only — plot, characters, themes, cast, trivia, genre gossip. Be sharp and funny, never long-winded: under 120 words unless depth is genuinely needed, zero filler. Warn before major spoilers and let the user opt in, unless they've made clear they want them. Off-topic questions get steered back to this title with a joke.`,
+        content: `You are Watchlr's assistant for ${describe(media)}. Answer questions about this title only — plot, characters, themes, cast, trivia, genre gossip. Be sharp and funny, never long-winded: under 120 words unless depth is genuinely needed, zero filler. Warn before major spoilers and let the user opt in, unless they've made clear they want them. Off-topic questions get steered back to this title with a joke.`,
       },
       ...turns.slice(-12),
     ],

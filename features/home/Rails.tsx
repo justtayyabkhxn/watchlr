@@ -94,7 +94,7 @@ export async function ContinueWatchingRail() {
         <EmptyState
           icon={History}
           title="Your half-finished shows live here"
-          body="Sign in and Watchr keeps your place across every series and movie night."
+          body="Sign in and Watchlr keeps your place across every series and movie night."
           cta={{ href: "/login", label: "Sign in" }}
         />
       </section>

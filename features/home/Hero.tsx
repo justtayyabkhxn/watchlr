@@ -69,7 +69,7 @@ export async function Hero({ trending }: { trending: MediaItem[] }) {
           </Highlighter>
         </h1>
         <p className="mt-7 max-w-md text-lg leading-relaxed text-muted">
-          Watchr tracks everything you watch — and its AI explains endings,
+          Watchlr tracks everything you watch — and its AI explains endings,
           dodges spoilers, and tells you if tonight&apos;s pick is worth it.
         </p>
         <div className="mt-9 flex items-center gap-3 sm:gap-4">

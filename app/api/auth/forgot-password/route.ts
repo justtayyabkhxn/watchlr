@@ -26,7 +26,7 @@ export async function POST(req: Request) {
 
     const base = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
     console.log(
-      `[watchr] Password reset link for ${user.email}: ${base}/forgot-password?token=${token}`,
+      `[watchlr] Password reset link for ${user.email}: ${base}/forgot-password?token=${token}`,
     );
   }
 
