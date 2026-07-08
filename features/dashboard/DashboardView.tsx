@@ -46,7 +46,7 @@ interface Stats {
 
 function ChartCard({ title, sub, children }: { title: string; sub?: string; children: React.ReactNode }) {
   return (
-    <section className="rounded-3xl border-2 border-border bg-card p-6">
+    <section className="min-w-0 rounded-3xl border-2 border-border bg-card p-6">
       <h2 className="text-lg font-black">{title}</h2>
       {sub && <p className="mb-4 mt-0.5 text-xs font-bold text-muted">{sub}</p>}
       <div className={sub ? "" : "mt-4"}>{children}</div>
