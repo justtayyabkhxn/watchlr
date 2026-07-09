@@ -7,6 +7,7 @@ import type {
   TmdbMovieResult,
   TmdbMultiResult,
   TmdbPaged,
+  TmdbReviewResult,
   TmdbSeasonDetails,
   TmdbTvDetails,
   TmdbTvResult,
@@ -176,6 +177,34 @@ export async function searchMulti(
   };
 }
 
+/**
+ * Resolve an AI-suggested title to a real TMDB entry of the right kind —
+ * hallucinated titles and duplicates (via `known`) come back null.
+ */
+export async function resolveTitle(
+  title: string,
+  year: string,
+  wantType: MediaType,
+  known: Set<string>,
+): Promise<MediaItem | null> {
+  try {
+    const { items } = await searchMulti(title);
+    const y = year?.slice(0, 4);
+    const match =
+      items.find(
+        (i) =>
+          i.mediaType === wantType &&
+          i.posterPath &&
+          (!y || Math.abs(Number(i.releaseDate.slice(0, 4)) - Number(y)) <= 1),
+      ) ?? items.find((i) => i.mediaType === wantType && i.posterPath);
+    if (!match || known.has(`${match.mediaType}-${match.id}`)) return null;
+    known.add(`${match.mediaType}-${match.id}`);
+    return match;
+  } catch {
+    return null;
+  }
+}
+
 export async function discover(
   f: DiscoverFilters,
 ): Promise<{ items: MediaItem[]; page: number; totalPages: number }> {
@@ -235,6 +264,25 @@ export async function getTitleMeta(
   }
   const d = await tmdb<{ number_of_seasons: number | null }>(`/tv/${id}`);
   return { runtime: null, seasons: d.number_of_seasons ?? null };
+}
+
+/** Community reviews (both pages TMDB usually has), newest-ish first. */
+export async function getTitleReviews(
+  id: number,
+  mediaType: MediaType,
+): Promise<TmdbReviewResult[]> {
+  const first = await tmdb<TmdbPaged<TmdbReviewResult>>(
+    `/${mediaType}/${id}/reviews`,
+  );
+  let results = first.results;
+  if (first.total_pages > 1) {
+    const second = await tmdb<TmdbPaged<TmdbReviewResult>>(
+      `/${mediaType}/${id}/reviews`,
+      { page: 2 },
+    );
+    results = [...results, ...second.results];
+  }
+  return results;
 }
 
 export async function getSeasonDetails(

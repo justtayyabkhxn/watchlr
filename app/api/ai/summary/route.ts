@@ -1,8 +1,14 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import { AISummary, SUMMARY_TYPES, type SummaryType } from "@/models/AISummary";
-import { generateSummary, MODEL_TAG, type TitleContext } from "@/lib/ai";
-import { getMovieDetails, getTvDetails } from "@/lib/tmdb";
+import {
+  generateSummary,
+  generateVerdict,
+  MODEL_TAG,
+  type ProseSummaryType,
+  type TitleContext,
+} from "@/lib/ai";
+import { getMovieDetails, getTitleReviews, getTvDetails } from "@/lib/tmdb";
 import { releaseYear } from "@/lib/media";
 
 export const maxDuration = 60;
@@ -57,7 +63,27 @@ export async function POST(req: Request) {
 
   try {
     const media = await buildContext(tmdbId, mediaType);
-    const content = await generateSummary(summaryType as SummaryType, media);
+
+    let content: string;
+    if (summaryType === "internet_verdict") {
+      const reviews = await getTitleReviews(tmdbId, mediaType);
+      if (reviews.length === 0) {
+        // Reviews may show up later — answer honestly but don't cache it.
+        return NextResponse.json({
+          content: `The internet hasn't weighed in on ${media.title} yet — no reviews to summarize. You could be patient zero: watch it and leave the first one.`,
+          cached: false,
+        });
+      }
+      content = await generateVerdict(
+        media,
+        reviews.slice(0, 12).map((r) => ({
+          rating: r.author_details?.rating ?? null,
+          excerpt: r.content.slice(0, 700),
+        })),
+      );
+    } else {
+      content = await generateSummary(summaryType as ProseSummaryType, media);
+    }
 
     await AISummary.findOneAndUpdate(
       { tmdbId, mediaType, summaryType },

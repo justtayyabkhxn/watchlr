@@ -87,7 +87,7 @@ export function TitleChat({
         </div>
       </div>
 
-      <div ref={scrollRef} className="max-h-80 space-y-3 overflow-y-auto p-4">
+      <div ref={scrollRef} data-lenis-prevent className="max-h-80 space-y-3 overflow-y-auto p-4">
         {turns.length === 0 && (
           <div className="space-y-2 py-2">
             <p className="text-xs font-bold text-muted">Try asking:</p>

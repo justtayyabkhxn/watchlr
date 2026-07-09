@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Search, SlidersHorizontal, X, Flame, Clock3 } from "lucide-react";
+import { keepPreviousData, useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Search, SlidersHorizontal, Sparkles, Wand2, X, Flame, Clock3 } from "lucide-react";
 import type { MediaItem, MediaType } from "@/types/tmdb";
 import { GENRES } from "@/lib/media";
 import { PosterCard } from "@/components/cards/PosterCard";
@@ -46,6 +46,43 @@ const POPULAR_SEARCHES = [
   "Interstellar",
   "Breaking Bad",
 ];
+
+const VIBE_IDEAS = [
+  "the one where a guy relives the same day at a wedding",
+  "like severance but warmer",
+  "a cozy heist, nothing gory",
+  "space movie that made everyone cry",
+];
+
+interface VibeItem extends MediaItem {
+  reason: string;
+}
+
+interface VibeApiItem {
+  tmdbId: number;
+  mediaType: MediaType;
+  title: string;
+  posterPath: string | null;
+  releaseDate: string;
+  voteAverage: number;
+  genreIds: number[];
+  reason: string;
+}
+
+function vibeToMediaItem(v: VibeApiItem): VibeItem {
+  return {
+    id: v.tmdbId,
+    mediaType: v.mediaType,
+    title: v.title,
+    overview: "",
+    posterPath: v.posterPath,
+    backdropPath: null,
+    releaseDate: v.releaseDate,
+    voteAverage: v.voteAverage,
+    genreIds: v.genreIds,
+    reason: v.reason,
+  };
+}
 
 const LANGUAGES = [
   ["en", "English"],
@@ -113,6 +150,11 @@ export function SearchExperience() {
   const queryClient = useQueryClient();
   const [query, setQuery] = useState(params.get("q") ?? "");
   const [tab, setTab] = useState<Tab>("all");
+  // Vibe mode: freeform "describe it" search answered by the AI.
+  const [vibeMode, setVibeMode] = useState(params.get("vibe") === "1");
+  const [vibeQuery, setVibeQuery] = useState(
+    params.get("vibe") === "1" ? (params.get("q") ?? "") : "",
+  );
   // Mood cards on the home page deep-link here with ?genre=<tmdb id>
   const [filters, setFilters] = useState<Filters>(() => ({
     ...EMPTY_FILTERS,
@@ -125,12 +167,15 @@ export function SearchExperience() {
   // Keep the URL shareable.
   useEffect(() => {
     const qs = new URLSearchParams();
-    if (debouncedQuery) qs.set("q", debouncedQuery);
+    if (vibeMode) {
+      qs.set("vibe", "1");
+      if (vibeQuery) qs.set("q", vibeQuery);
+    } else if (debouncedQuery) qs.set("q", debouncedQuery);
     else if (filters.genre) qs.set("genre", filters.genre);
     router.replace(qs.size > 0 ? `/search?${qs}` : "/search", { scroll: false });
-  }, [debouncedQuery, filters.genre, router]);
+  }, [debouncedQuery, filters.genre, router, vibeMode, vibeQuery]);
 
-  const isSearchMode = debouncedQuery.length > 0;
+  const isSearchMode = !vibeMode && debouncedQuery.length > 0;
   const discoverType: MediaType = tab === "tv" ? "tv" : "movie";
 
   const queryKey = isSearchMode
@@ -146,6 +191,11 @@ export function SearchExperience() {
     isFetchingNextPage,
   } = useInfiniteQuery({
     queryKey,
+    enabled: !vibeMode,
+    // TMDB's catalog barely moves in 10 minutes; retyping a query or
+    // flipping a filter back should be instant, not a skeleton flash
+    staleTime: 10 * 60_000,
+    placeholderData: keepPreviousData,
     initialPageParam: 1,
     queryFn: ({ pageParam }) => {
       if (isSearchMode) {
@@ -181,6 +231,23 @@ export function SearchExperience() {
     io.observe(el);
     return () => io.disconnect();
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+  const vibe = useQuery({
+    queryKey: ["vibe", vibeQuery],
+    enabled: vibeMode && vibeQuery.trim().length >= 3,
+    staleTime: Infinity,
+    retry: false,
+    queryFn: async (): Promise<VibeItem[]> => {
+      const res = await fetch("/api/ai/vibe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: vibeQuery }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? "Vibe search failed.");
+      return ((json.items ?? []) as VibeApiItem[]).map(vibeToMediaItem);
+    },
+  });
 
   const { data: recent } = useQuery({
     queryKey: ["recent-searches"],
@@ -235,15 +302,62 @@ export function SearchExperience() {
         </h1>
       </header>
 
+      {/* Mode toggle: exact-title search vs. describe-the-vibe AI search */}
+      <div className="mb-4 flex flex-wrap items-center gap-2" role="tablist" aria-label="Search mode">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={!vibeMode}
+          onClick={() => setVibeMode(false)}
+          className={`flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-bold transition-colors ${
+            !vibeMode
+              ? "-rotate-1 bg-ink text-white shadow-offset-xs"
+              : "border-2 border-border bg-card text-muted hover:bg-surface-hover hover:text-ink"
+          }`}
+        >
+          <Search className="size-4" aria-hidden />
+          By name
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={vibeMode}
+          onClick={() => setVibeMode(true)}
+          className={`flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-bold transition-colors ${
+            vibeMode
+              ? "rotate-1 bg-ink text-white shadow-offset-xs"
+              : "border-2 border-border bg-card text-muted hover:bg-surface-hover hover:text-ink"
+          }`}
+        >
+          <Wand2 className="size-4" aria-hidden />
+          By vibe
+        </button>
+        {vibeMode && (
+          <p className="text-xs font-semibold text-muted">
+            describe the plot, the mood, or &quot;like x but y&quot; — the AI does the rest
+          </p>
+        )}
+      </div>
+
       {/* Big search input */}
-      <div className="relative">
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (vibeMode) setVibeQuery(query.trim());
+        }}
+        className="relative"
+      >
         <Search aria-hidden className="pointer-events-none absolute left-5 top-1/2 size-5 -translate-y-1/2 text-muted" />
         <input
           type="search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Movies, shows, that one film with the guy…"
-          aria-label="Search movies and shows"
+          placeholder={
+            vibeMode
+              ? "that movie where the guy relives the same day at a wedding…"
+              : "Movies, shows, that one film with the guy…"
+          }
+          aria-label={vibeMode ? "Describe a movie or show" : "Search movies and shows"}
           autoFocus
           className="h-16 w-full rounded-full border-2 border-border bg-card pl-13 pr-32 text-lg font-semibold shadow-soft placeholder:font-normal placeholder:text-muted  "
         />
@@ -252,32 +366,46 @@ export function SearchExperience() {
             type="button"
             onClick={() => setQuery("")}
             aria-label="Clear search"
-            className="absolute right-20 top-1/2 grid size-9 -translate-y-1/2 place-items-center rounded-full text-muted hover:bg-surface-hover hover:text-ink"
+            className={`absolute top-1/2 grid size-9 -translate-y-1/2 place-items-center rounded-full text-muted hover:bg-surface-hover hover:text-ink ${
+              vibeMode ? "right-40 max-sm:right-16" : "right-20"
+            }`}
           >
             <X className="size-4" />
           </button>
         )}
-        <button
-          type="button"
-          onClick={() => setShowFilters(!showFilters)}
-          aria-expanded={showFilters}
-          className={`absolute right-3 top-1/2 flex h-11 -translate-y-1/2 items-center gap-1.5 rounded-full px-4 text-sm font-bold transition-colors ${
-            showFilters || activeFilterCount > 0
-              ? "-rotate-1 bg-ink text-white shadow-offset-xs"
-              : "bg-surface-hover text-ink hover:bg-accent-soft"
-          }`}
-        >
-          <SlidersHorizontal className="size-4" aria-hidden />
-          <span className="max-sm:hidden">Filters</span>
-          {activeFilterCount > 0 && (
-            <span className="grid size-5 place-items-center rounded-full bg-accent text-[11px] font-black text-ink">
-              {activeFilterCount}
-            </span>
-          )}
-        </button>
-      </div>
+        {vibeMode ? (
+          <button
+            type="submit"
+            disabled={query.trim().length < 3 || vibe.isFetching}
+            className="absolute right-3 top-1/2 flex h-11 -translate-y-1/2 items-center gap-1.5 rounded-full border-2 border-ink bg-accent px-4 text-sm font-bold text-ink shadow-offset-xs transition-all duration-150 hover:-translate-x-0.5 hover:bg-accent-soft active:translate-x-[2px] active:translate-y-[calc(-50%+2px)] active:shadow-none disabled:opacity-50"
+          >
+            <Sparkles className="size-4" aria-hidden />
+            <span className="max-sm:hidden">Read my mind</span>
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setShowFilters(!showFilters)}
+            aria-expanded={showFilters}
+            className={`absolute right-3 top-1/2 flex h-11 -translate-y-1/2 items-center gap-1.5 rounded-full px-4 text-sm font-bold transition-colors ${
+              showFilters || activeFilterCount > 0
+                ? "-rotate-1 bg-ink text-white shadow-offset-xs"
+                : "bg-surface-hover text-ink hover:bg-accent-soft"
+            }`}
+          >
+            <SlidersHorizontal className="size-4" aria-hidden />
+            <span className="max-sm:hidden">Filters</span>
+            {activeFilterCount > 0 && (
+              <span className="grid size-5 place-items-center rounded-full bg-accent text-[11px] font-black text-ink">
+                {activeFilterCount}
+              </span>
+            )}
+          </button>
+        )}
+      </form>
 
       {/* Tabs */}
+      {!vibeMode && (
       <div className="mt-5 flex flex-wrap items-center gap-2" role="tablist" aria-label="Media type">
         {(["all", "movie", "tv"] as const).map((t) => (
           <button
@@ -296,9 +424,10 @@ export function SearchExperience() {
           <p className="text-xs font-semibold text-muted">browsing movies — pick a tab to narrow</p>
         )}
       </div>
+      )}
 
       {/* Filters */}
-      {showFilters && (
+      {!vibeMode && showFilters && (
         <div className="mt-5 grid grid-cols-2 gap-4 rounded-3xl border-2 border-border bg-card p-6 sm:grid-cols-3 lg:grid-cols-6">
           <Select label="Genre" value={filters.genre} onChange={(v) => setFilters({ ...filters, genre: v })}>
             <option value="">Any</option>
@@ -359,8 +488,34 @@ export function SearchExperience() {
         </div>
       )}
 
+      {/* Vibe idle state: example prompts */}
+      {vibeMode && !vibeQuery && (
+        <div className="mt-8">
+          <p className="mb-2.5 flex items-center gap-1.5 text-xs font-black text-muted">
+            <Wand2 className="size-3.5" aria-hidden /> Try describing
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {VIBE_IDEAS.map((idea, i) => (
+              <button
+                key={idea}
+                type="button"
+                onClick={() => {
+                  setQuery(idea);
+                  setVibeQuery(idea);
+                }}
+                className={`rounded-full bg-accent-soft px-4 py-1.5 text-sm font-bold transition-transform ${
+                  i % 2 === 0 ? "hover:-rotate-2" : "hover:rotate-2"
+                }`}
+              >
+                {idea}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Recent + popular searches (idle state) */}
-      {!isSearchMode && activeFilterCount === 0 && (
+      {!vibeMode && !isSearchMode && activeFilterCount === 0 && (
         <div className="mt-8 space-y-5">
           {recent && recent.length > 0 && (
             <div>
@@ -411,7 +566,60 @@ export function SearchExperience() {
         </div>
       )}
 
+      {/* Vibe results */}
+      {vibeMode && vibeQuery && (
+        <div className="mt-10">
+          {vibe.isFetching ? (
+            <div>
+              <p className="mb-6 flex items-center gap-2 text-sm font-bold text-muted">
+                <Sparkles className="size-4 animate-pulse text-accent" aria-hidden />
+                Reading your mind…
+              </p>
+              <div className="grid grid-cols-2 gap-x-5 gap-y-8 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+                {Array.from({ length: 10 }).map((_, i) => (
+                  <PosterSkeleton key={i} />
+                ))}
+              </div>
+            </div>
+          ) : vibe.isError ? (
+            <EmptyState
+              icon={Wand2}
+              title="The mind-reader blinked"
+              body={(vibe.error as Error).message}
+            />
+          ) : !vibe.data || vibe.data.length === 0 ? (
+            <EmptyState
+              icon={Wand2}
+              title="Nothing matched that vibe"
+              body="Add a detail — a scene, an actor, the decade, how it made you feel — and try again."
+            />
+          ) : (
+            <div className="grid grid-cols-2 gap-x-5 gap-y-8 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+              {vibe.data.map((item, i) => (
+                <div key={`${item.mediaType}-${item.id}`}>
+                  <PosterCard
+                    item={item}
+                    className="w-full"
+                    sizes="(max-width: 640px) 45vw, (max-width: 1024px) 25vw, 210px"
+                  />
+                  {item.reason && (
+                    <p
+                      className={`mt-1.5 inline-block rounded-xl bg-accent-soft/70 px-2 py-1 text-[11px] font-bold leading-snug text-ink ${
+                        i % 2 === 0 ? "-rotate-1" : "rotate-1"
+                      }`}
+                    >
+                      {item.reason}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Results */}
+      {!vibeMode && (
       <div className="mt-10">
         {isLoading ? (
           <div className="grid grid-cols-2 gap-x-5 gap-y-8 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
@@ -454,6 +662,7 @@ export function SearchExperience() {
           </>
         )}
       </div>
+      )}
     </div>
   );
 }

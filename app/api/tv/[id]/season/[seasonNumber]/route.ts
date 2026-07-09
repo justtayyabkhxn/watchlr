@@ -13,7 +13,10 @@ export async function GET(
   }
 
   try {
-    return NextResponse.json(await getSeasonDetails(tvId, season));
+    // Episode lists barely change once aired — cache hard, revalidate lazily.
+    return NextResponse.json(await getSeasonDetails(tvId, season), {
+      headers: { "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400" },
+    });
   } catch {
     return NextResponse.json({ error: "Season unavailable." }, { status: 502 });
   }

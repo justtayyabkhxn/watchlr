@@ -6,6 +6,7 @@ import {
   BookOpen,
   Drama,
   EyeOff,
+  Globe,
   HelpCircle,
   Sparkles,
   TriangleAlert,
@@ -17,6 +18,7 @@ import { Button } from "@/components/ui/Button";
 
 const TABS: { type: SummaryType; label: string; icon: typeof Sparkles; spoilers: boolean }[] = [
   { type: "should_i_watch", label: "Should I watch?", icon: HelpCircle, spoilers: false },
+  { type: "internet_verdict", label: "The internet's verdict", icon: Globe, spoilers: false },
   { type: "spoiler_free", label: "Spoiler-free", icon: EyeOff, spoilers: false },
   { type: "themes", label: "Themes", icon: Drama, spoilers: false },
   { type: "detailed", label: "Full plot", icon: BookOpen, spoilers: true },

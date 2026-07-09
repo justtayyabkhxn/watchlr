@@ -6,6 +6,7 @@ export const SUMMARY_TYPES = [
   "ending_explained",
   "themes",
   "should_i_watch",
+  "internet_verdict", // generated from real TMDB reviews, not the synopsis
 ] as const;
 
 export type SummaryType = (typeof SUMMARY_TYPES)[number];

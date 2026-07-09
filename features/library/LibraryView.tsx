@@ -17,6 +17,7 @@ import { tmdbImage } from "@/lib/media";
 import { PosterCard } from "@/components/cards/PosterCard";
 import { PosterSkeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { WatchlistTriage } from "./WatchlistTriage";
 
 const TABS: { value: LibraryStatus | "lists"; label: string }[] = [
   { value: "watching", label: "Watching" },
@@ -255,6 +256,7 @@ export function LibraryView() {
         ))}
       </div>
 
+      {tab === "want_to_watch" && <WatchlistTriage />}
       {tab === "lists" ? <CollectionsPanel /> : <StatusGrid status={tab} key={tab} />}
     </div>
   );

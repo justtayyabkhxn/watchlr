@@ -14,6 +14,7 @@ const PAGE_STICKERS: StickerSpec[] = [
   { icon: "flame", className: "right-[12%] top-44 hidden xl:block", tilt: -10, delay: "1.4s", size: "sm" },
 ];
 import { EmptyState } from "@/components/ui/EmptyState";
+import { TasteRoast } from "./TasteRoast";
 import {
   CalendarHeatmap,
   GenreBars,
@@ -102,6 +103,8 @@ export function DashboardView() {
             <StatTile value={String(data.totals.titles)} label="unique titles" rotate="rotate-1" />
             <StatTile value={String(data.totals.completed)} label="completed" />
           </div>
+
+          <TasteRoast />
 
           <ChartCard title="Weekly rhythm" sub="Watches per week, last 12 weeks">
             <WeeklyBars daily={data.daily} />

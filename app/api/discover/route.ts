@@ -22,7 +22,11 @@ export async function GET(req: NextRequest) {
   };
 
   try {
-    return NextResponse.json(await discover(filters));
+    // Pure function of the query string, same for every user — let the CDN
+    // and browser hold it. Catalog data drifts slowly; 10 min is plenty fresh.
+    return NextResponse.json(await discover(filters), {
+      headers: { "Cache-Control": "public, s-maxage=600, stale-while-revalidate=3600" },
+    });
   } catch {
     return NextResponse.json({ error: "Discover is unavailable right now." }, { status: 502 });
   }

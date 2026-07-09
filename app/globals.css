@@ -74,6 +74,29 @@
   }
 }
 
+/* Page scrolling is smoothed by Lenis (components/layout/SmoothScroll.tsx),
+   so native scroll-behavior stays auto — the two would fight. scroll-padding
+   keeps anchor targets clear of the sticky h-16 navbar. */
+html {
+  scroll-padding-top: 5.5rem;
+}
+
+/* Lenis recommended styles (sans the iframe pointer-events rule, which
+   would kill the YouTube trailer embeds) */
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+.lenis.lenis-stopped {
+  overflow: hidden;
+}
+
 body {
   background-color: var(--color-background);
   color: var(--color-ink);
@@ -96,6 +119,42 @@ body::before {
   /* playful polka-dot grid: warm dots at 50% opacity on beige */
   background-image: radial-gradient(rgb(213 184 133 / 0.5) 1.5px, transparent 1.5px);
   background-size: 26px 26px;
+}
+
+/*
+  Dot twinkle: sparse cover layers painted in the page background color,
+  grid-aligned over the polka dots (odd multiples of the 26px tile keep the
+  centers matched). As a layer fades in, "its" dots blink out; as it fades
+  back, they return. Three layers on different durations/delays make the
+  blinking read as random. Layers sit above body::before (later in paint
+  order at the same z-index) and below all content.
+*/
+.dot-blinker {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0;
+  background-image: radial-gradient(var(--color-background) 2.5px, transparent 2.5px);
+  background-size: 78px 78px;
+  animation: dot-blink 2s linear infinite;
+}
+
+/* crisp on/off: dots stay lit most of the cycle, then pop off for a beat —
+   the 1% keyframe gaps make the toggle effectively instant */
+@keyframes dot-blink {
+  0%,
+  74% {
+    opacity: 0;
+  }
+  75%,
+  90% {
+    opacity: 1;
+  }
+  91%,
+  100% {
+    opacity: 0;
+  }
 }
 
 /* keep case where it's load-bearing: user input and code identifiers */

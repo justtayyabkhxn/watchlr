@@ -9,7 +9,13 @@ export function Providers({ children }: { children: React.ReactNode }) {
     () =>
       new QueryClient({
         defaultOptions: {
-          queries: { staleTime: 60_000, refetchOnWindowFocus: false },
+          queries: {
+            staleTime: 60_000,
+            // keep fetched pages alive across navigation so going back to
+            // library/search/dashboard renders instantly from cache
+            gcTime: 15 * 60_000,
+            refetchOnWindowFocus: false,
+          },
         },
       }),
   );

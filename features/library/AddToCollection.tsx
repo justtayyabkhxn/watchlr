@@ -96,7 +96,7 @@ export function AddToCollection({ item }: { item: TitlePayload }) {
               No lists yet — make your first one:
             </p>
           )}
-          <ul className="max-h-48 space-y-1 overflow-y-auto">
+          <ul data-lenis-prevent className="max-h-48 space-y-1 overflow-y-auto">
             {(data?.collections ?? []).map((c) => {
               const inList = c.items.some(
                 (i) => i.tmdbId === item.tmdbId && i.mediaType === item.mediaType,

@@ -102,6 +102,14 @@ export interface TmdbWatchProviders {
   >;
 }
 
+export interface TmdbReviewResult {
+  id: string;
+  author: string;
+  content: string;
+  created_at: string;
+  author_details: { rating: number | null };
+}
+
 export interface TmdbSeasonSummary {
   id: number;
   season_number: number;
