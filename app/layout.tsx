@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Analytics } from "@vercel/analytics/react";
 import { Bricolage_Grotesque } from "next/font/google";
 import { Providers } from "./providers";
 import { SmoothScroll } from "@/components/layout/SmoothScroll";
@@ -52,6 +53,7 @@ export default function RootLayout({
         </div>
         <SmoothScroll />
         <Providers>{children}</Providers>
+        <Analytics />
       </body>
     </html>
   );
