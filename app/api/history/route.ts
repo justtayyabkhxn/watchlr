@@ -25,7 +25,11 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  const rows = await WatchHistory.find({ userId })
+  const source = p.get("source");
+  const rows = await WatchHistory.find({
+    userId,
+    ...(source === "stream" || source === "log" ? { source } : {}),
+  })
     .sort({ watchedAt: -1 })
     .limit(200)
     .lean();
@@ -48,7 +52,7 @@ export async function POST(req: Request) {
   if (!userId) return NextResponse.json({ error: "Not signed in." }, { status: 401 });
 
   const body = await req.json().catch(() => null);
-  const { tmdbId, mediaType, title, posterPath, runtime, genreIds, seasonNumber, episodeNumber } = body ?? {};
+  const { tmdbId, mediaType, title, posterPath, runtime, genreIds, seasonNumber, episodeNumber, source } = body ?? {};
 
   if (
     !Number.isInteger(tmdbId) ||
@@ -74,6 +78,7 @@ export async function POST(req: Request) {
         posterPath: posterPath ?? null,
         runtime: runtime ?? 0,
         genreIds: genreIds ?? [],
+        source: source === "stream" ? "stream" : "log",
         watchedAt: new Date(),
       },
     },

@@ -11,6 +11,8 @@ const WatchHistorySchema = new Schema(
     genreIds: { type: [Number], default: [] },
     seasonNumber: { type: Number },
     episodeNumber: { type: Number },
+    // "log" = marked watched manually, "stream" = played in the built-in player
+    source: { type: String, enum: ["log", "stream"], default: "log" },
     watchedAt: { type: Date, default: Date.now },
   },
   { timestamps: true },

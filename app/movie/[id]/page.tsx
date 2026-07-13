@@ -5,8 +5,9 @@ import { formatRuntime, releaseYear } from "@/lib/media";
 import type { TmdbMovieDetails } from "@/types/tmdb";
 import { DetailHero } from "@/features/detail/DetailHero";
 import { TrailerEmbed } from "@/features/detail/TrailerEmbed";
+import { MovieStreamPlayer } from "@/features/detail/StreamPlayer";
 import { CastRail } from "@/features/detail/CastRail";
-import { Providers } from "@/features/detail/Providers";
+import { WhereToWatch } from "@/features/detail/WhereToWatch";
 import { SimilarRail } from "@/features/detail/SimilarRail";
 import { Reviews } from "@/features/detail/Reviews";
 import { TitleActions } from "@/features/library/TitleActions";
@@ -96,6 +97,16 @@ export default async function MoviePage({
           </section>
 
           <section>
+            <SectionHeader overline="Stream it" title="Watch now" />
+            <MovieStreamPlayer
+              tmdbId={movie.id}
+              title={movie.title}
+              backdropPath={movie.backdrop_path}
+              item={payload}
+            />
+          </section>
+
+          <section>
             <SectionHeader overline="Ask the assistant" title="AI takes" />
             <AIPanel tmdbId={movie.id} mediaType="movie" title={movie.title} />
           </section>
@@ -123,7 +134,11 @@ export default async function MoviePage({
         <aside className="space-y-8 lg:pt-4">
           <div className="rounded-3xl border-2 border-border bg-card p-6">
             <h2 className="mb-4 text-lg font-black">Where to watch</h2>
-            <Providers providers={movie["watch/providers"]} />
+            <WhereToWatch
+              tmdbId={movie.id}
+              mediaType="movie"
+              providers={movie["watch/providers"]}
+            />
           </div>
           <div className="rounded-3xl border-2 border-border bg-card p-6">
             <h2 className="mb-4 text-lg font-black">Facts</h2>

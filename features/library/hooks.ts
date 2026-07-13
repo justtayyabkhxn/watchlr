@@ -70,7 +70,12 @@ export function useTitleHistory(tmdbId: number, mediaType: MediaType, enabled = 
 export function useLogWatch(item: TitlePayload) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (episode?: { seasonNumber: number; episodeNumber: number; runtime?: number | null }) => {
+    mutationFn: async (episode?: {
+      seasonNumber?: number;
+      episodeNumber?: number;
+      runtime?: number | null;
+      source?: "log" | "stream";
+    }) => {
       const res = await fetch("/api/history", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -79,12 +84,13 @@ export function useLogWatch(item: TitlePayload) {
           runtime: episode?.runtime ?? item.runtime ?? 0,
           seasonNumber: episode?.seasonNumber,
           episodeNumber: episode?.episodeNumber,
+          source: episode?.source ?? "log",
         }),
       });
       if (!res.ok) throw new Error("Failed to log watch");
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["history", item.mediaType, item.tmdbId] });
+      qc.invalidateQueries({ queryKey: ["history"] });
     },
   });
 }
@@ -104,7 +110,7 @@ export function useUnlogWatch(item: TitlePayload) {
       await fetch(`/api/history?${qs}`, { method: "DELETE" });
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["history", item.mediaType, item.tmdbId] });
+      qc.invalidateQueries({ queryKey: ["history"] });
     },
   });
 }

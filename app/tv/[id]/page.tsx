@@ -5,8 +5,9 @@ import { releaseYear } from "@/lib/media";
 import type { TmdbTvDetails } from "@/types/tmdb";
 import { DetailHero } from "@/features/detail/DetailHero";
 import { TrailerEmbed } from "@/features/detail/TrailerEmbed";
+import { TvStreamPlayer } from "@/features/detail/StreamPlayer";
 import { CastRail } from "@/features/detail/CastRail";
-import { Providers } from "@/features/detail/Providers";
+import { WhereToWatch } from "@/features/detail/WhereToWatch";
 import { SimilarRail } from "@/features/detail/SimilarRail";
 import { Reviews } from "@/features/detail/Reviews";
 import { Seasons } from "@/features/detail/Seasons";
@@ -96,6 +97,17 @@ export default async function TvPage({
           </section>
 
           <section>
+            <SectionHeader overline="Stream it" title="Watch now" />
+            <TvStreamPlayer
+              tmdbId={show.id}
+              title={show.name}
+              backdropPath={show.backdrop_path}
+              seasons={show.seasons}
+              item={payload}
+            />
+          </section>
+
+          <section>
             <SectionHeader overline="Track your progress" title="Seasons & episodes" />
             <Seasons tvId={show.id} seasons={show.seasons} item={payload} />
           </section>
@@ -128,7 +140,11 @@ export default async function TvPage({
         <aside className="space-y-8 lg:pt-4">
           <div className="rounded-3xl border-2 border-border bg-card p-6">
             <h2 className="mb-4 text-lg font-black">Where to watch</h2>
-            <Providers providers={show["watch/providers"]} />
+            <WhereToWatch
+              tmdbId={show.id}
+              mediaType="tv"
+              providers={show["watch/providers"]}
+            />
           </div>
           <div className="rounded-3xl border-2 border-border bg-card p-6">
             <h2 className="mb-4 text-lg font-black">Facts</h2>

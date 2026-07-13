@@ -18,8 +18,10 @@ import { PosterCard } from "@/components/cards/PosterCard";
 import { PosterSkeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { WatchlistTriage } from "./WatchlistTriage";
+import { ContinueWatching } from "./ContinueWatching";
 
-const TABS: { value: LibraryStatus | "lists"; label: string }[] = [
+const TABS: { value: LibraryStatus | "lists" | "continue"; label: string }[] = [
+  { value: "continue", label: "Continue watching" },
   { value: "watching", label: "Watching" },
   { value: "want_to_watch", label: "Want to watch" },
   { value: "completed", label: "Completed" },
@@ -228,7 +230,7 @@ function CollectionsPanel() {
 }
 
 export function LibraryView() {
-  const [tab, setTab] = useState<LibraryStatus | "lists">("watching");
+  const [tab, setTab] = useState<LibraryStatus | "lists" | "continue">("continue");
 
   return (
     <div className="relative mx-auto max-w-6xl px-6 pb-24">
@@ -257,7 +259,13 @@ export function LibraryView() {
       </div>
 
       {tab === "want_to_watch" && <WatchlistTriage />}
-      {tab === "lists" ? <CollectionsPanel /> : <StatusGrid status={tab} key={tab} />}
+      {tab === "continue" ? (
+        <ContinueWatching />
+      ) : tab === "lists" ? (
+        <CollectionsPanel />
+      ) : (
+        <StatusGrid status={tab} key={tab} />
+      )}
     </div>
   );
 }
