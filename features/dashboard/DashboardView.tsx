@@ -129,7 +129,7 @@ export function DashboardView() {
                 const poster = tmdbImage(r.posterPath, "w185");
                 return (
                   <li key={i}>
-                    <Link href={`/${r.mediaType}/${r.tmdbId}`} className="group block">
+                    <Link href={`/${r.mediaType}/${r.tmdbId}`} prefetch={false} className="group block">
                       <div className="relative aspect-[2/3] overflow-hidden rounded-2xl border border-border bg-border transition-shadow duration-300 group-hover:shadow-lift">
                         {poster ? (
                           <Image

@@ -92,7 +92,7 @@ export function ContinueWatching() {
             : null;
         return (
           <div key={`${e.mediaType}-${e.tmdbId}`} className="group/entry relative">
-            <Link href={`/${e.mediaType}/${e.tmdbId}`}>
+            <Link href={`/${e.mediaType}/${e.tmdbId}`} prefetch={false}>
               <div className="relative aspect-[2/3] overflow-hidden rounded-2xl border border-border bg-border shadow-soft transition-shadow group-hover/entry:shadow-lift">
                 {poster && (
                   <Image

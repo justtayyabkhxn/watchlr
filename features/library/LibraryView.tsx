@@ -197,7 +197,7 @@ function CollectionsPanel() {
             <div className="no-scrollbar -mx-6 flex gap-4 overflow-x-auto px-6">
               {c.items.map((item) => (
                 <div key={`${item.mediaType}-${item.tmdbId}`} className="group/item relative w-28 shrink-0">
-                  <Link href={`/${item.mediaType}/${item.tmdbId}`}>
+                  <Link href={`/${item.mediaType}/${item.tmdbId}`} prefetch={false}>
                     <div className="relative aspect-[2/3] overflow-hidden rounded-2xl border border-border bg-border shadow-soft transition-shadow group-hover/item:shadow-lift">
                       {item.posterPath && (
                         <Image

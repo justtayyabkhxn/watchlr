@@ -308,6 +308,7 @@ export default async function PublicProfilePage({
                     <div className="mb-3 flex items-center gap-3">
                       <Link
                         href={`/${r.mediaType}/${r.tmdbId}`}
+                        prefetch={false}
                         className="relative block aspect-[2/3] w-10 shrink-0 overflow-hidden rounded-lg bg-border"
                       >
                         {poster && <Image src={poster} alt="" fill sizes="40px" className="object-cover" />}
@@ -315,6 +316,7 @@ export default async function PublicProfilePage({
                       <div className="min-w-0 flex-1">
                         <Link
                           href={`/${r.mediaType}/${r.tmdbId}`}
+                          prefetch={false}
                           className="line-clamp-1 text-sm font-black hover:underline hover:decoration-accent hover:decoration-2 hover:underline-offset-4"
                         >
                           {r.title}

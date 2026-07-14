@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -95,26 +95,8 @@ export function PosterCard({
 }) {
   const [loaded, setLoaded] = useState(false);
   const [hovered, setHovered] = useState(false);
-  const rootRef = useRef<HTMLDivElement>(null);
   const reduceMotion = useReducedMotion();
 
-  // touch devices have no hover — fetch meta when the card scrolls into view
-  useEffect(() => {
-    if (!window.matchMedia("(hover: none)").matches) return;
-    const el = rootRef.current;
-    if (!el) return;
-    const io = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) {
-          setHovered(true);
-          io.disconnect();
-        }
-      },
-      { rootMargin: "150px" },
-    );
-    io.observe(el);
-    return () => io.disconnect();
-  }, []);
   const poster = tmdbImage(item.posterPath, "w342");
   const genre = item.genreIds.map(genreName).find(Boolean);
 
@@ -142,12 +124,12 @@ export function PosterCard({
     <motion.div
       whileHover={reduceMotion ? undefined : { y: -6, rotate: item.id % 2 === 0 ? 1.5 : -1.5 }}
       transition={{ type: "spring", stiffness: 300, damping: 18 }}
-      ref={rootRef}
       onMouseEnter={() => setHovered(true)}
       className={`group ${className}`}
     >
       <Link
         href={`/${item.mediaType}/${item.id}`}
+        prefetch={false}
         className="block focus-visible:outline-accent"
         aria-label={`${item.title} (${releaseYear(item.releaseDate)})`}
       >
