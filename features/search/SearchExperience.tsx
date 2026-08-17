@@ -107,6 +107,31 @@ const GENRE_OPTIONS = Object.entries(GENRES).sort((a, b) =>
   a[1].localeCompare(b[1]),
 );
 
+// UI token → TMDB `sort_by`. Date sorts differ by media type, so resolve at
+// query time once we know whether we're browsing movies or TV.
+const SORT_OPTIONS = [
+  ["", "Popular"],
+  ["rating", "Top rated"],
+  ["votes", "Most voted"],
+  ["newest", "Newest"],
+  ["oldest", "Oldest"],
+] as const;
+
+function resolveSort(token: string, mediaType: MediaType): string | undefined {
+  switch (token) {
+    case "rating":
+      return "vote_average.desc";
+    case "votes":
+      return "vote_count.desc";
+    case "newest":
+      return mediaType === "movie" ? "primary_release_date.desc" : "first_air_date.desc";
+    case "oldest":
+      return mediaType === "movie" ? "primary_release_date.asc" : "first_air_date.asc";
+    default:
+      return undefined;
+  }
+}
+
 interface PageResult {
   items: MediaItem[];
   page: number;
@@ -160,6 +185,7 @@ export function SearchExperience() {
     ...EMPTY_FILTERS,
     genre: params.get("genre") ?? "",
   }));
+  const [sortBy, setSortBy] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const debouncedQuery = useDebounce(query.trim(), 350);
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -180,7 +206,7 @@ export function SearchExperience() {
 
   const queryKey = isSearchMode
     ? ["search", debouncedQuery]
-    : ["discover", discoverType, filters];
+    : ["discover", discoverType, filters, sortBy];
 
   const {
     data,
@@ -210,6 +236,8 @@ export function SearchExperience() {
       if (filters.language) qs.set("language", filters.language);
       if (filters.maxRuntime) qs.set("maxRuntime", filters.maxRuntime);
       if (filters.watchProvider) qs.set("watchProvider", filters.watchProvider);
+      const sort = resolveSort(sortBy, discoverType);
+      if (sort) qs.set("sortBy", sort);
       return fetchPage(`/api/discover?${qs}`);
     },
     getNextPageParam: (last) =>
@@ -422,6 +450,21 @@ export function SearchExperience() {
         ))}
         {!isSearchMode && tab === "all" && (
           <p className="text-xs font-semibold text-muted">browsing movies — pick a tab to narrow</p>
+        )}
+        {!isSearchMode && (
+          <label className="ml-auto flex items-center gap-2">
+            <span className="text-[11px] font-black text-muted">Sort</span>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              aria-label="Sort results"
+              className="h-9 rounded-full border-2 border-border bg-card px-3 text-xs font-bold focus:border-accent focus:outline-none"
+            >
+              {SORT_OPTIONS.map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </select>
+          </label>
         )}
       </div>
       )}

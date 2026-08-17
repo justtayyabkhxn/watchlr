@@ -86,13 +86,19 @@ export function ContinueWatching() {
     <div className="grid grid-cols-2 gap-x-5 gap-y-8 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
       {entries.map((e) => {
         const poster = tmdbImage(e.posterPath, "w342");
-        const episodeLabel =
-          e.mediaType === "tv" && e.seasonNumber != null && e.episodeNumber != null
-            ? `S${e.seasonNumber} E${e.episodeNumber}`
-            : null;
+        const isEpisode =
+          e.mediaType === "tv" && e.seasonNumber != null && e.episodeNumber != null;
+        const episodeLabel = isEpisode ? `S${e.seasonNumber} E${e.episodeNumber}` : null;
+        // Resume deep-links: TV jumps to the *next* episode (the player rolls
+        // over season boundaries); movies just autoplay where they left off.
+        const href = isEpisode
+          ? `/tv/${e.tmdbId}?s=${e.seasonNumber}&e=${e.episodeNumber}&resume=next`
+          : e.mediaType === "movie"
+            ? `/movie/${e.tmdbId}?play=1`
+            : `/${e.mediaType}/${e.tmdbId}`;
         return (
           <div key={`${e.mediaType}-${e.tmdbId}`} className="group/entry relative">
-            <Link href={`/${e.mediaType}/${e.tmdbId}`} prefetch={false}>
+            <Link href={href} prefetch={false}>
               <div className="relative aspect-[2/3] overflow-hidden rounded-2xl border border-border bg-border shadow-soft transition-shadow group-hover/entry:shadow-lift">
                 {poster && (
                   <Image

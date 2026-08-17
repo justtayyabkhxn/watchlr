@@ -14,18 +14,30 @@ export async function GET(req: NextRequest) {
   await connectDB();
   const userId = await getUserId();
 
-  const [mine, agg] = await Promise.all([
+  const [mine, agg, buckets] = await Promise.all([
     userId ? Rating.findOne({ userId, tmdbId, mediaType }).lean() : null,
     Rating.aggregate<{ avg: number; count: number }>([
       { $match: { tmdbId, mediaType } },
       { $group: { _id: null, avg: { $avg: "$value" }, count: { $sum: 1 } } },
     ]),
+    Rating.aggregate<{ _id: number; count: number }>([
+      { $match: { tmdbId, mediaType } },
+      { $group: { _id: "$value", count: { $sum: 1 } } },
+    ]),
   ]);
+
+  // Dense 1..10 histogram (index 0 = a rating of 1) so the client can render bars
+  // without worrying about missing buckets.
+  const distribution = Array.from({ length: 10 }, (_, i) => {
+    const b = buckets.find((x) => x._id === i + 1);
+    return b?.count ?? 0;
+  });
 
   return NextResponse.json({
     mine: mine?.value ?? null,
     average: agg[0]?.avg ?? null,
     count: agg[0]?.count ?? 0,
+    distribution,
   });
 }
 

@@ -19,6 +19,7 @@ import { PosterSkeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { WatchlistTriage } from "./WatchlistTriage";
 import { ContinueWatching } from "./ContinueWatching";
+import { ShareListButton } from "./ShareListButton";
 
 const TABS: { value: LibraryStatus | "lists" | "continue"; label: string }[] = [
   { value: "continue", label: "Continue watching" },
@@ -180,14 +181,17 @@ function CollectionsPanel() {
                 {c.items.length} title{c.items.length === 1 ? "" : "s"}
               </p>
             </div>
-            <button
-              type="button"
-              onClick={() => deleteList.mutate(c.id)}
-              aria-label={`Delete list ${c.name}`}
-              className="grid size-9 place-items-center rounded-full text-muted transition-colors hover:bg-surface-hover hover:text-ink"
-            >
-              <Trash2 className="size-4" />
-            </button>
+            <div className="flex items-center gap-1">
+              <ShareListButton id={c.id} name={c.name} />
+              <button
+                type="button"
+                onClick={() => deleteList.mutate(c.id)}
+                aria-label={`Delete list ${c.name}`}
+                className="grid size-9 place-items-center rounded-full text-muted transition-colors hover:bg-surface-hover hover:text-ink"
+              >
+                <Trash2 className="size-4" />
+              </button>
+            </div>
           </div>
           {c.items.length === 0 ? (
             <p className="rounded-2xl border-2 border-dashed border-border p-5 text-sm text-muted">

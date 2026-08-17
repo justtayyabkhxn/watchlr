@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Analytics } from "@vercel/analytics/react";
 import { Bricolage_Grotesque } from "next/font/google";
 import { Providers } from "./providers";
@@ -18,6 +18,11 @@ export const metadata: Metadata = {
   },
   description:
     "A movie & TV tracker with AI summaries, ending explanations, and recommendations.",
+  appleWebApp: { capable: true, title: "Watchlr", statusBarStyle: "default" },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#1d1d1d",
 };
 
 export default function RootLayout({

@@ -74,7 +74,7 @@ export default async function TvPage({
   };
 
   return (
-    <div className="overflow-x-clip pb-24">
+    <div className="pb-24">
       <DetailHero
         title={show.name}
         tagline={show.tagline}
@@ -97,7 +97,6 @@ export default async function TvPage({
           </section>
 
           <section>
-            <SectionHeader overline="Stream it" title="Watch now" />
             <TvStreamPlayer
               tmdbId={show.id}
               title={show.name}

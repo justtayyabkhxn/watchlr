@@ -1,15 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useQuery } from "@tanstack/react-query";
-import { Lock, MonitorPlay, Play } from "lucide-react";
+import { Lock, MonitorPlay, Play, RectangleHorizontal, X } from "lucide-react";
 import type { TmdbSeasonDetails, TmdbSeasonSummary } from "@/types/tmdb";
 import { tmdbImage } from "@/lib/media";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { SectionHeader } from "@/components/ui/SectionHeader";
 import { useLogWatch, type TitlePayload } from "@/features/library/hooks";
 
 // Same providers as the netflix project: 2embed.cc is what its search-result
@@ -30,6 +31,20 @@ const SERVERS = [
       `https://vidsrc.su/embed/tv/${tmdbId}/${season}/${episode}`,
   },
 ] as const;
+
+type SeasonLike = { season_number: number; episode_count: number };
+
+/** Given a last-watched (season, episode), return the next episode to play,
+ *  rolling into the next season when the current one is finished. Clamps to the
+ *  finale at series end. `seasons` must be real seasons (no specials), in order. */
+function nextEpisode(seasons: SeasonLike[], season: number, episode: number) {
+  const idx = seasons.findIndex((s) => s.season_number === season);
+  if (idx === -1) return { season, episode };
+  if (episode < seasons[idx].episode_count) return { season, episode: episode + 1 };
+  const next = seasons[idx + 1];
+  if (next) return { season: next.season_number, episode: 1 };
+  return { season, episode };
+}
 
 function ServerPicker({
   server,
@@ -108,6 +123,7 @@ function PlayerFrame({
   playing,
   onPlay,
   signedIn,
+  frameless = false,
 }: {
   src: string;
   title: string;
@@ -115,11 +131,16 @@ function PlayerFrame({
   playing: boolean;
   onPlay: () => void;
   signedIn: boolean;
+  frameless?: boolean;
 }) {
   const backdrop = tmdbImage(backdropPath, "w780");
 
   return (
-    <div className="relative aspect-video overflow-hidden rounded-3xl border-2 border-border bg-ink shadow-soft">
+    <div
+      className={`absolute inset-0 overflow-hidden bg-ink ${
+        frameless ? "" : "rounded-3xl border-2 border-border shadow-soft"
+      }`}
+    >
       {!signedIn ? (
         <SignInGate title={title} backdrop={backdrop} />
       ) : playing ? (
@@ -162,6 +183,109 @@ function PlayerFrame({
   );
 }
 
+function TheatreToggle({
+  theatre,
+  onToggle,
+}: {
+  theatre: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-pressed={theatre}
+      title={theatre ? "Exit theatre mode" : "Theatre mode"}
+      className={`mb-1 inline-flex shrink-0 items-center gap-1.5 rounded-full border-2 px-3 py-1.5 text-xs font-black transition-colors ${
+        theatre
+          ? "border-ink bg-accent text-ink"
+          : "border-border bg-card text-muted hover:border-accent hover:text-ink"
+      }`}
+    >
+      <RectangleHorizontal className="size-4" aria-hidden />
+      <span className="hidden sm:inline">Theatre</span>
+    </button>
+  );
+}
+
+/** Escape-to-exit + background scroll lock while theatre mode is active. */
+function useTheatreMode(active: boolean, onExit: () => void) {
+  useEffect(() => {
+    if (!active) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onExit();
+    };
+    document.addEventListener("keydown", onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [active, onExit]);
+}
+
+/**
+ * Wraps the player. The slot always reserves the inline 16:9 space so the page
+ * never jumps when toggling theatre. Only classNames change between modes — the
+ * DOM nodes (and the iframe) are never unmounted, so the stream keeps playing.
+ * In theatre mode the player is lifted into a fixed, dimmed overlay and sized to
+ * the largest 16:9 box that fits the viewport (letterboxed, not stretched).
+ *
+ * `fixed` is viewport-relative here because no ancestor establishes a containing
+ * block for it (the page wrapper uses `overflow-x-clip`, not `transform`).
+ */
+function TheatreSlot({
+  theatre,
+  onExit,
+  children,
+}: {
+  theatre: boolean;
+  onExit: () => void;
+  children: React.ReactNode;
+}) {
+  useTheatreMode(theatre, onExit);
+
+  return (
+    <div className="relative aspect-video w-full">
+      {/* Backdrop: dims the page and click-to-exits in theatre mode. */}
+      <div
+        onClick={theatre ? onExit : undefined}
+        className={
+          theatre
+            ? "fixed inset-0 z-[200] flex items-center justify-center bg-ink/90 p-4 backdrop-blur-sm sm:p-8"
+            : "absolute inset-0"
+        }
+      >
+        {/* Player box. In theatre it's a centered 16:9 box bounded by viewport
+            height (max-w derived from 100vh minus the 4rem of vertical padding). */}
+        <div
+          onClick={theatre ? (e) => e.stopPropagation() : undefined}
+          className={
+            theatre
+              ? "relative aspect-video w-full max-w-[calc((100vh-4rem)*16/9)] overflow-hidden rounded-2xl shadow-soft"
+              : "relative size-full"
+          }
+        >
+          <button
+            type="button"
+            onClick={onExit}
+            aria-label="Exit theatre mode"
+            className={
+              theatre
+                ? "absolute right-3 top-3 z-10 grid size-10 place-items-center rounded-full bg-ink/70 text-white transition-transform hover:scale-105"
+                : "hidden"
+            }
+          >
+            <X className="size-5" aria-hidden />
+          </button>
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function MovieStreamPlayer({
   tmdbId,
   title,
@@ -175,25 +299,48 @@ export function MovieStreamPlayer({
 }) {
   const [playing, setPlaying] = useState(false);
   const [server, setServer] = useState(0);
+  const [theatre, setTheatre] = useState(false);
   const { status } = useSession();
   const signedIn = status === "authenticated";
   const logWatch = useLogWatch(item);
+  const exitTheatre = useCallback(() => setTheatre(false), []);
+  const rootRef = useRef<HTMLDivElement>(null);
 
   const startPlaying = () => {
     setPlaying(true);
     logWatch.mutate({ source: "stream" });
   };
 
+  // Resume deep-link from Continue Watching: `?play=1` autoplays and scrolls
+  // the player into view.
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("play") === "1") {
+      startPlaying();
+      rootRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
-    <div className="space-y-4">
-      <PlayerFrame
-        src={SERVERS[server].movie(tmdbId)}
-        title={title}
-        backdropPath={backdropPath}
-        playing={playing}
-        onPlay={startPlaying}
-        signedIn={signedIn}
+    <div ref={rootRef} className="space-y-4">
+      <SectionHeader
+        overline="Stream it"
+        title="Watch now"
+        action={<TheatreToggle theatre={theatre} onToggle={() => setTheatre((t) => !t)} />}
       />
+
+      <TheatreSlot theatre={theatre} onExit={exitTheatre}>
+        <PlayerFrame
+          src={SERVERS[server].movie(tmdbId)}
+          title={title}
+          backdropPath={backdropPath}
+          playing={playing}
+          onPlay={startPlaying}
+          signedIn={signedIn}
+          frameless={theatre}
+        />
+      </TheatreSlot>
+
       {signedIn && (
         <div className="rounded-3xl border-2 border-border bg-card p-4">
           <ServerPicker
@@ -294,14 +441,34 @@ export function TvStreamPlayer({
   const [episode, setEpisode] = useState(1);
   const [playing, setPlaying] = useState(false);
   const [server, setServer] = useState(0);
+  const [theatre, setTheatre] = useState(false);
   const { status } = useSession();
   const signedIn = status === "authenticated";
   const logWatch = useLogWatch(item);
+  const exitTheatre = useCallback(() => setTheatre(false), []);
+  const rootRef = useRef<HTMLDivElement>(null);
 
   const startPlaying = (s: number, e: number) => {
     setPlaying(true);
     logWatch.mutate({ seasonNumber: s, episodeNumber: e, source: "stream" });
   };
+
+  // Resume deep-link from Continue Watching: `?s=&e=` selects an episode, and
+  // `resume=next` advances to the following one (rolling over seasons). Then
+  // autoplay and scroll the player into view.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const s = Number(params.get("s"));
+    const e = Number(params.get("e"));
+    if (!s || !e) return;
+    const target =
+      params.get("resume") === "next" ? nextEpisode(realSeasons, s, e) : { season: s, episode: e };
+    setSeason(target.season);
+    setEpisode(target.episode);
+    startPlaying(target.season, target.episode);
+    rootRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const current = realSeasons.find((s) => s.season_number === season);
   const episodeCount = current?.episode_count ?? 1;
@@ -309,15 +476,24 @@ export function TvStreamPlayer({
   if (realSeasons.length === 0) return null;
 
   return (
-    <div className="space-y-4">
-      <PlayerFrame
-        src={SERVERS[server].tv(tmdbId, season, episode)}
-        title={`${title} · S${season} E${episode}`}
-        backdropPath={backdropPath}
-        playing={playing}
-        onPlay={() => startPlaying(season, episode)}
-        signedIn={signedIn}
+    <div ref={rootRef} className="space-y-4">
+      <SectionHeader
+        overline="Stream it"
+        title="Watch now"
+        action={<TheatreToggle theatre={theatre} onToggle={() => setTheatre((t) => !t)} />}
       />
+
+      <TheatreSlot theatre={theatre} onExit={exitTheatre}>
+        <PlayerFrame
+          src={SERVERS[server].tv(tmdbId, season, episode)}
+          title={`${title} · S${season} E${episode}`}
+          backdropPath={backdropPath}
+          playing={playing}
+          onPlay={() => startPlaying(season, episode)}
+          signedIn={signedIn}
+          frameless={theatre}
+        />
+      </TheatreSlot>
 
       {signedIn && (
       <div className="space-y-4 rounded-3xl border-2 border-border bg-card p-4">

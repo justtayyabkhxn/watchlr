@@ -133,8 +133,38 @@ export function Seasons({
   const realSeasons = seasons.filter((s) => s.season_number > 0);
   if (realSeasons.length === 0) return null;
 
+  // Overall progress across every non-special season.
+  const totalEpisodes = realSeasons.reduce((sum, s) => sum + (s.episode_count ?? 0), 0);
+  const totalWatched = [...watched].filter((k) => !k.startsWith("0-")).length;
+  const overallPct = totalEpisodes ? Math.round((totalWatched / totalEpisodes) * 100) : 0;
+
   return (
     <div className="space-y-4">
+      {signedIn && totalEpisodes > 0 && (
+        <div className="rounded-3xl border-2 border-border bg-card p-5">
+          <div className="flex items-baseline justify-between gap-3">
+            <p className="text-sm font-black">
+              {overallPct === 100 ? "Series complete 🎉" : "Your progress"}
+            </p>
+            <p className="text-xs font-bold text-muted">
+              {totalWatched} / {totalEpisodes} episodes · {overallPct}%
+            </p>
+          </div>
+          <div
+            className="mt-2.5 h-2 w-full overflow-hidden rounded-full bg-border"
+            role="progressbar"
+            aria-valuenow={overallPct}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-label="Overall series progress"
+          >
+            <div
+              className="h-full rounded-full bg-accent transition-all duration-500"
+              style={{ width: `${overallPct}%` }}
+            />
+          </div>
+        </div>
+      )}
       {realSeasons.map((season) => {
         const isOpen = open === season.season_number;
         const watchedCount = [...watched].filter(

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getUserId } from "@/lib/auth";
 import { connectDB } from "@/lib/db";
 import { WatchHistory } from "@/models/WatchHistory";
+import { checkWatchMilestone } from "@/lib/notifications";
 
 export async function GET(req: NextRequest) {
   const userId = await getUserId();
@@ -84,6 +85,10 @@ export async function POST(req: Request) {
     },
     { upsert: true },
   );
+
+  // Award achievement notifications as the user's watch count crosses milestones.
+  const total = await WatchHistory.countDocuments({ userId });
+  await checkWatchMilestone(userId, total);
 
   return NextResponse.json({ ok: true });
 }

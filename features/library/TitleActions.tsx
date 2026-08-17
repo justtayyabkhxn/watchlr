@@ -71,6 +71,65 @@ export function StarRating({
         {data?.mine ? `You rated it ${data.mine}/10` : "Rate it"}
         {data?.count ? ` · watchlr avg ${data.average?.toFixed(1)} (${data.count})` : ""}
       </p>
+      {data && data.count > 0 && data.distribution && (
+        <RatingDistribution
+          distribution={data.distribution}
+          mine={data.mine}
+          average={data.average}
+        />
+      )}
+    </div>
+  );
+}
+
+/** Compact 1–10 histogram of the community's ratings, with a marker showing
+ *  where the viewer's own score lands relative to the crowd. */
+function RatingDistribution({
+  distribution,
+  mine,
+  average,
+}: {
+  distribution: number[];
+  mine: number | null;
+  average: number | null;
+}) {
+  const max = Math.max(1, ...distribution);
+  const verdict =
+    mine != null && average != null
+      ? mine >= average + 1
+        ? "warmer on it than the crowd"
+        : mine <= average - 1
+          ? "colder on it than the crowd"
+          : "right about with the crowd"
+      : null;
+
+  return (
+    <div className="mt-3 max-w-xs">
+      <div className="flex h-16 items-end gap-1" aria-hidden>
+        {distribution.map((count, i) => {
+          const value = i + 1;
+          const isMine = mine === value;
+          return (
+            <div key={value} className="flex flex-1 flex-col items-center gap-1">
+              <div
+                className={`w-full rounded-sm transition-all ${
+                  isMine ? "bg-ink" : "bg-accent/50"
+                }`}
+                style={{ height: `${Math.max(count > 0 ? 8 : 2, (count / max) * 56)}px` }}
+                title={`${count} rated ${value}`}
+              />
+              <span className={`text-[9px] font-black ${isMine ? "text-ink" : "text-muted"}`}>
+                {value}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+      {verdict && (
+        <p className="mt-1.5 text-[11px] font-bold text-muted">
+          You&apos;re <span className="text-ink">{verdict}</span>.
+        </p>
+      )}
     </div>
   );
 }

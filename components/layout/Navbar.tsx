@@ -7,6 +7,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useSession, signOut } from "next-auth/react";
 import { Clapperboard, Menu, Search, X, LogOut } from "lucide-react";
 import { useUIStore } from "@/store/ui";
+import { NotificationBell } from "@/features/notifications/NotificationBell";
 
 const links = [
   { href: "/", label: "Home" },
@@ -96,6 +97,7 @@ export function Navbar() {
 
         <div className="ml-auto flex items-center gap-3">
           <SearchBox className="group hidden w-48 transition-[width] duration-300 ease-out focus-within:w-72 lg:block" />
+          {session?.user && <NotificationBell />}
           {session?.user ? (
             <div className="hidden items-center gap-2 md:flex">
               <Link

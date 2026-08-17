@@ -120,7 +120,12 @@ export function useRatings(tmdbId: number, mediaType: MediaType) {
     queryKey: ["ratings", mediaType, tmdbId],
     queryFn: async () => {
       const res = await fetch(`/api/ratings?tmdbId=${tmdbId}&mediaType=${mediaType}`);
-      return res.json() as Promise<{ mine: number | null; average: number | null; count: number }>;
+      return res.json() as Promise<{
+        mine: number | null;
+        average: number | null;
+        count: number;
+        distribution: number[];
+      }>;
     },
   });
 }

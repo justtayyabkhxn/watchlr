@@ -45,6 +45,22 @@ interface Stats {
   }[];
 }
 
+/** Current daily watch streak: consecutive days with activity ending today (or
+ *  yesterday, so a not-yet-watched today doesn't break an active streak). */
+function currentStreak(daily: DailyPoint[]): number {
+  const active = new Set(daily.filter((d) => d.count > 0).map((d) => d.date));
+  const fmt = (d: Date) => d.toISOString().slice(0, 10);
+  const cursor = new Date();
+  cursor.setHours(0, 0, 0, 0);
+  if (!active.has(fmt(cursor))) cursor.setDate(cursor.getDate() - 1);
+  let streak = 0;
+  while (active.has(fmt(cursor))) {
+    streak++;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+  return streak;
+}
+
 function ChartCard({ title, sub, children }: { title: string; sub?: string; children: React.ReactNode }) {
   return (
     <section className="min-w-0 rounded-3xl border-2 border-border bg-card p-6">
@@ -116,10 +132,18 @@ export function DashboardView() {
             </ChartCard>
             <ChartCard title="Consistency check" sub="Daily activity, last 20 weeks">
               <CalendarHeatmap daily={data.daily} />
-              <p className="mt-5 text-xs font-bold text-muted">
-                {data.totals.reviews} review{data.totals.reviews === 1 ? "" : "s"} written ·{" "}
-                {data.totals.ratings} rating{data.totals.ratings === 1 ? "" : "s"} given
-              </p>
+              {(() => {
+                const streak = currentStreak(data.daily);
+                return (
+                  <p className="mt-5 text-xs font-bold text-muted">
+                    {streak > 0 && (
+                      <span className="mr-1 text-ink">🔥 {streak}-day streak · </span>
+                    )}
+                    {data.totals.reviews} review{data.totals.reviews === 1 ? "" : "s"} written ·{" "}
+                    {data.totals.ratings} rating{data.totals.ratings === 1 ? "" : "s"} given
+                  </p>
+                );
+              })()}
             </ChartCard>
           </div>
 

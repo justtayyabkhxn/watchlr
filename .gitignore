@@ -39,3 +39,26 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Signing secrets (do not commit)
+/android/keystore.properties
+/android/*.keystore
+/dist/
+
+# Android / Capacitor build artifacts
+/android/.gradle/
+/android/build/
+/android/app/build/
+/android/capacitor-cordova-android-plugins/build/
+/android/local.properties
+/android/.idea/
+/android/captures/
+/android/*.iml
+/android/app/release/
+/android/app/debug/
+/android/app/src/main/assets/public/
+/android/app/src/main/assets/capacitor.config.json
+/android/app/src/main/assets/capacitor.plugins.json
+
+# dev screenshots
+*-shot.png

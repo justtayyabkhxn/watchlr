@@ -97,7 +97,6 @@ export default async function MoviePage({
           </section>
 
           <section>
-            <SectionHeader overline="Stream it" title="Watch now" />
             <MovieStreamPlayer
               tmdbId={movie.id}
               title={movie.title}

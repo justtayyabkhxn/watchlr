@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Award, Check, Lock, Plus, Trophy, X } from "lucide-react";
+import { Award, Check, Download, Lock, Plus, Trophy, Upload, X } from "lucide-react";
 import { StickerField, type StickerSpec } from "@/features/decor/Doodads";
 
 const PAGE_STICKERS: StickerSpec[] = [
@@ -98,6 +98,29 @@ export function ProfileView() {
       qc.invalidateQueries({ queryKey: ["profile"] });
     },
     onError: (err) => setSaveError(err instanceof Error ? err.message : "Failed to save"),
+  });
+
+  const [importMsg, setImportMsg] = useState("");
+  const importData = useMutation({
+    mutationFn: async (file: File) => {
+      const text = await file.text();
+      const json = JSON.parse(text);
+      const res = await fetch("/api/account/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(json),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error ?? "Import failed");
+      return data.imported as Record<string, number>;
+    },
+    onSuccess: (imported) => {
+      const total = Object.values(imported).reduce((a, b) => a + b, 0);
+      setImportMsg(`Imported ${total} items. Refresh to see everything.`);
+      qc.invalidateQueries();
+    },
+    onError: (err) =>
+      setImportMsg(err instanceof Error ? err.message : "Import failed — is it a watchlr export?"),
   });
 
   if (isLoading || !profile) {
@@ -301,6 +324,43 @@ export function ProfileView() {
           ) : (
             <Skeleton className="h-32 w-full" />
           )}
+        </section>
+
+        <section className="rounded-3xl border-2 border-border bg-card p-6">
+          <h2 className="mb-1 flex items-center gap-2 text-lg font-black">
+            <Download className="size-5 text-accent" aria-hidden /> Your data
+          </h2>
+          <p className="mb-4 text-sm font-semibold text-muted">
+            Export your watchlist, ratings, reviews, lists, and history as a file — or bring it
+            back in. Import merges without duplicating.
+          </p>
+          <div className="flex flex-wrap items-center gap-3">
+            <a
+              href="/api/account/export"
+              download
+              className="inline-flex h-10 items-center gap-2 rounded-full border-2 border-ink bg-card px-4 text-sm font-black shadow-offset-xs transition-transform hover:-translate-y-0.5"
+            >
+              <Download className="size-4" aria-hidden /> Export
+            </a>
+            <label className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-full bg-ink px-4 text-sm font-black text-white transition-colors hover:bg-accent hover:text-ink">
+              <Upload className="size-4" aria-hidden />
+              {importData.isPending ? "Importing…" : "Import"}
+              <input
+                type="file"
+                accept="application/json,.json"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    setImportMsg("");
+                    importData.mutate(file);
+                  }
+                  e.target.value = "";
+                }}
+              />
+            </label>
+          </div>
+          {importMsg && <p className="mt-3 text-sm font-bold text-accent">{importMsg}</p>}
         </section>
       </div>
     </div>
