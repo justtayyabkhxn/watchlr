@@ -2,10 +2,11 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { AnimatePresence, motion } from "framer-motion";
 import { keepPreviousData, useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Search, SlidersHorizontal, Sparkles, Wand2, X, Flame, Clock3 } from "lucide-react";
 import type { MediaItem, MediaType } from "@/types/tmdb";
-import { GENRES } from "@/lib/media";
+import { GENRES, genreIdForType, genreIdMatches } from "@/lib/media";
 import { PosterCard } from "@/components/cards/PosterCard";
 import { PosterSkeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -189,17 +190,41 @@ export function SearchExperience() {
   const [showFilters, setShowFilters] = useState(false);
   const debouncedQuery = useDebounce(query.trim(), 350);
   const sentinelRef = useRef<HTMLDivElement>(null);
+  // Last query string this component wrote, so the adopt effect below can
+  // tell its own router.replace apart from an external navigation.
+  const lastWrittenQs = useRef<string | null>(null);
 
-  // Keep the URL shareable.
+  // Keep the URL shareable: q and genre serialize together (a query no
+  // longer silently drops an active genre filter from the URL).
   useEffect(() => {
     const qs = new URLSearchParams();
     if (vibeMode) {
       qs.set("vibe", "1");
       if (vibeQuery) qs.set("q", vibeQuery);
-    } else if (debouncedQuery) qs.set("q", debouncedQuery);
-    else if (filters.genre) qs.set("genre", filters.genre);
+    } else {
+      if (debouncedQuery) qs.set("q", debouncedQuery);
+      if (filters.genre) qs.set("genre", filters.genre);
+    }
+    lastWrittenQs.current = qs.toString();
     router.replace(qs.size > 0 ? `/search?${qs}` : "/search", { scroll: false });
   }, [debouncedQuery, filters.genre, router, vibeMode, vibeQuery]);
+
+  // Adopt external URL changes (navbar search while already on /search,
+  // back/forward). Without this, params were read only in useState
+  // initializers, so a same-route navigation changed the URL but never the
+  // results.
+  useEffect(() => {
+    const current = params.toString();
+    if (lastWrittenQs.current === null || current === lastWrittenQs.current) return;
+    lastWrittenQs.current = current;
+    const q = params.get("q") ?? "";
+    const vibe = params.get("vibe") === "1";
+    const genre = params.get("genre") ?? "";
+    setVibeMode(vibe);
+    setQuery(q);
+    setVibeQuery(vibe ? q : "");
+    setFilters((f) => (f.genre === genre ? f : { ...f, genre }));
+  }, [params]);
 
   const isSearchMode = !vibeMode && debouncedQuery.length > 0;
   const discoverType: MediaType = tab === "tv" ? "tv" : "movie";
@@ -230,7 +255,11 @@ export function SearchExperience() {
         );
       }
       const qs = new URLSearchParams({ mediaType: discoverType, page: String(pageParam) });
-      if (filters.genre) qs.set("genre", filters.genre);
+      // TMDB genre ids are per-media-type — translate so a mood-card genre
+      // (movie vocabulary) still works on the TV tab instead of returning a
+      // guaranteed-empty grid
+      if (filters.genre)
+        qs.set("genre", String(genreIdForType(Number(filters.genre), discoverType)));
       if (filters.year) qs.set("year", filters.year);
       if (filters.minRating) qs.set("minRating", filters.minRating);
       if (filters.language) qs.set("language", filters.language);
@@ -302,7 +331,8 @@ export function SearchExperience() {
     if (isSearchMode) {
       // Search-multi can't take TMDB filters; apply them client-side.
       if (tab !== "all") all = all.filter((i) => i.mediaType === tab);
-      if (filters.genre) all = all.filter((i) => i.genreIds.includes(Number(filters.genre)));
+      if (filters.genre)
+        all = all.filter((i) => genreIdMatches(Number(filters.genre), i.genreIds));
       if (filters.year) all = all.filter((i) => i.releaseDate.startsWith(filters.year));
       if (filters.minRating) all = all.filter((i) => i.voteAverage >= Number(filters.minRating));
     }
@@ -316,11 +346,17 @@ export function SearchExperience() {
   }, [data, isSearchMode, tab, filters]);
 
   const activeFilterCount = Object.values(filters).filter(Boolean).length;
+  // In search mode only genre/year/minRating actually apply (TMDB's search
+  // endpoint takes no filters; those three are applied client-side) — the
+  // badge counts what's really in effect, not everything that's set.
+  const appliedFilterCount = isSearchMode
+    ? [filters.genre, filters.year, filters.minRating].filter(Boolean).length
+    : activeFilterCount;
 
   return (
-    <div className="relative mx-auto max-w-6xl px-6 pb-24">
+    <div className="relative mx-auto max-w-6xl px-4 pb-24 sm:px-6">
       <StickerField items={PAGE_STICKERS} />
-      <header className="pb-8 pt-14">
+      <header className="pb-6 pt-8 sm:pb-8 sm:pt-14">
         <p className="overline-track text-accent">Discover</p>
         <h1 className="text-offset mt-2 text-4xl font-black tracking-tight sm:text-6xl">
           Find your next{" "}
@@ -375,7 +411,7 @@ export function SearchExperience() {
         }}
         className="relative"
       >
-        <Search aria-hidden className="pointer-events-none absolute left-5 top-1/2 size-5 -translate-y-1/2 text-muted" />
+        <Search aria-hidden className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-muted sm:left-5" />
         <input
           type="search"
           value={query}
@@ -387,15 +423,15 @@ export function SearchExperience() {
           }
           aria-label={vibeMode ? "Describe a movie or show" : "Search movies and shows"}
           autoFocus
-          className="h-16 w-full rounded-full border-2 border-border bg-card pl-13 pr-32 text-lg font-semibold shadow-soft placeholder:font-normal placeholder:text-muted  "
+          className="h-14 w-full rounded-full border-2 border-border bg-card pl-12 pr-24 text-base font-semibold shadow-soft transition-[border-color,box-shadow] duration-200 placeholder:font-normal placeholder:text-muted focus:border-ink focus:shadow-offset-xs sm:h-16 sm:pl-13 sm:pr-32 sm:text-lg"
         />
         {query && (
           <button
             type="button"
             onClick={() => setQuery("")}
             aria-label="Clear search"
-            className={`absolute top-1/2 grid size-9 -translate-y-1/2 place-items-center rounded-full text-muted hover:bg-surface-hover hover:text-ink ${
-              vibeMode ? "right-40 max-sm:right-16" : "right-20"
+            className={`absolute top-1/2 grid size-9 -translate-y-1/2 place-items-center rounded-full text-muted transition-colors hover:bg-surface-hover hover:text-ink ${
+              vibeMode ? "right-40 max-sm:right-16" : "right-16 sm:right-20"
             }`}
           >
             <X className="size-4" />
@@ -416,16 +452,16 @@ export function SearchExperience() {
             onClick={() => setShowFilters(!showFilters)}
             aria-expanded={showFilters}
             className={`absolute right-3 top-1/2 flex h-11 -translate-y-1/2 items-center gap-1.5 rounded-full px-4 text-sm font-bold transition-colors ${
-              showFilters || activeFilterCount > 0
+              showFilters || appliedFilterCount > 0
                 ? "-rotate-1 bg-ink text-white shadow-offset-xs"
                 : "bg-surface-hover text-ink hover:bg-accent-soft"
             }`}
           >
             <SlidersHorizontal className="size-4" aria-hidden />
             <span className="max-sm:hidden">Filters</span>
-            {activeFilterCount > 0 && (
+            {appliedFilterCount > 0 && (
               <span className="grid size-5 place-items-center rounded-full bg-accent text-[11px] font-black text-ink">
-                {activeFilterCount}
+                {appliedFilterCount}
               </span>
             )}
           </button>
@@ -470,8 +506,16 @@ export function SearchExperience() {
       )}
 
       {/* Filters */}
+      <AnimatePresence initial={false}>
       {!vibeMode && showFilters && (
-        <div className="mt-5 grid grid-cols-2 gap-4 rounded-3xl border-2 border-border bg-card p-6 sm:grid-cols-3 lg:grid-cols-6">
+        <motion.div
+          initial={{ height: 0, opacity: 0 }}
+          animate={{ height: "auto", opacity: 1 }}
+          exit={{ height: 0, opacity: 0 }}
+          transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+          className="overflow-hidden"
+        >
+        <div className="mt-5 grid grid-cols-2 gap-3 rounded-3xl border-2 border-border bg-card p-4 sm:grid-cols-3 sm:gap-4 sm:p-6 lg:grid-cols-6">
           <Select label="Genre" value={filters.genre} onChange={(v) => setFilters({ ...filters, genre: v })}>
             <option value="">Any</option>
             {GENRE_OPTIONS.map(([id, name]) => (
@@ -529,7 +573,9 @@ export function SearchExperience() {
             </button>
           )}
         </div>
+        </motion.div>
       )}
+      </AnimatePresence>
 
       {/* Vibe idle state: example prompts */}
       {vibeMode && !vibeQuery && (
@@ -618,7 +664,7 @@ export function SearchExperience() {
                 <Sparkles className="size-4 animate-pulse text-accent" aria-hidden />
                 Reading your mind…
               </p>
-              <div className="grid grid-cols-2 gap-x-5 gap-y-8 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+              <div className="grid grid-cols-2 gap-x-3 gap-y-6 sm:grid-cols-3 sm:gap-x-5 sm:gap-y-8 md:grid-cols-4 lg:grid-cols-5">
                 {Array.from({ length: 10 }).map((_, i) => (
                   <PosterSkeleton key={i} />
                 ))}
@@ -637,7 +683,7 @@ export function SearchExperience() {
               body="Add a detail — a scene, an actor, the decade, how it made you feel — and try again."
             />
           ) : (
-            <div className="grid grid-cols-2 gap-x-5 gap-y-8 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+            <div className="grid grid-cols-2 gap-x-3 gap-y-6 sm:grid-cols-3 sm:gap-x-5 sm:gap-y-8 md:grid-cols-4 lg:grid-cols-5">
               {vibe.data.map((item, i) => (
                 <div key={`${item.mediaType}-${item.id}`}>
                   <PosterCard
@@ -665,7 +711,7 @@ export function SearchExperience() {
       {!vibeMode && (
       <div className="mt-10">
         {isLoading ? (
-          <div className="grid grid-cols-2 gap-x-5 gap-y-8 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+          <div className="grid grid-cols-2 gap-x-3 gap-y-6 sm:grid-cols-3 sm:gap-x-5 sm:gap-y-8 md:grid-cols-4 lg:grid-cols-5">
             {Array.from({ length: 10 }).map((_, i) => (
               <PosterSkeleton key={i} />
             ))}
@@ -684,7 +730,7 @@ export function SearchExperience() {
           />
         ) : (
           <>
-            <div className="grid grid-cols-2 gap-x-5 gap-y-8 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+            <div className="grid grid-cols-2 gap-x-3 gap-y-6 sm:grid-cols-3 sm:gap-x-5 sm:gap-y-8 md:grid-cols-4 lg:grid-cols-5">
               {items.map((item) => (
                 <PosterCard
                   key={`${item.mediaType}-${item.id}`}
@@ -696,7 +742,7 @@ export function SearchExperience() {
             </div>
             <div ref={sentinelRef} aria-hidden className="h-1" />
             {isFetchingNextPage && (
-              <div className="mt-8 grid grid-cols-2 gap-x-5 gap-y-8 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+              <div className="mt-8 grid grid-cols-2 gap-x-3 gap-y-6 sm:grid-cols-3 sm:gap-x-5 sm:gap-y-8 md:grid-cols-4 lg:grid-cols-5">
                 {Array.from({ length: 5 }).map((_, i) => (
                   <PosterSkeleton key={i} />
                 ))}

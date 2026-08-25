@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getUserId } from "@/lib/auth";
 import { connectDB } from "@/lib/db";
 import { WatchHistory } from "@/models/WatchHistory";
+import { Watchlist } from "@/models/Watchlist";
 import { checkWatchMilestone } from "@/lib/notifications";
 
 export async function GET(req: NextRequest) {
@@ -21,6 +22,7 @@ export async function GET(req: NextRequest) {
       entries: rows.map((r) => ({
         seasonNumber: r.seasonNumber ?? null,
         episodeNumber: r.episodeNumber ?? null,
+        playCount: r.playCount ?? 1,
         watchedAt: r.watchedAt,
       })),
     });
@@ -53,7 +55,19 @@ export async function POST(req: Request) {
   if (!userId) return NextResponse.json({ error: "Not signed in." }, { status: 401 });
 
   const body = await req.json().catch(() => null);
-  const { tmdbId, mediaType, title, posterPath, runtime, genreIds, seasonNumber, episodeNumber, source } = body ?? {};
+  const {
+    tmdbId,
+    mediaType,
+    title,
+    posterPath,
+    runtime,
+    genreIds,
+    releaseDate,
+    voteAverage,
+    seasonNumber,
+    episodeNumber,
+    source,
+  } = body ?? {};
 
   if (
     !Number.isInteger(tmdbId) ||
@@ -64,7 +78,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid payload." }, { status: 400 });
   }
 
+  const src = source === "stream" ? "stream" : "log";
+  const runtimeNum = Number(runtime) || 0;
+
   await connectDB();
+  // `source` is part of the key: a stream play and a manual log of the same
+  // title live in separate rows, so one can't flip the other's source (which
+  // hid titles from continue-watching) or rewrite its watchedAt.
   await WatchHistory.findOneAndUpdate(
     {
       userId,
@@ -72,19 +92,49 @@ export async function POST(req: Request) {
       mediaType,
       seasonNumber: seasonNumber ?? null,
       episodeNumber: episodeNumber ?? null,
+      source: src,
     },
     {
       $set: {
         title,
         posterPath: posterPath ?? null,
-        runtime: runtime ?? 0,
         genreIds: genreIds ?? [],
-        source: source === "stream" ? "stream" : "log",
         watchedAt: new Date(),
+        // don't let a runtime-less writer (poster quick-tick) zero out a
+        // runtime a previous log recorded
+        ...(runtimeNum > 0 ? { runtime: runtimeNum } : {}),
       },
+      ...(runtimeNum > 0 ? {} : { $setOnInsert: { runtime: 0 } }),
+      // rewatches count: re-logging the same entry increments instead of
+      // being swallowed ($inc initializes to 1 on upsert-insert)
+      $inc: { playCount: 1 },
     },
     { upsert: true },
   );
+
+  // Cross-write: manually logging a full title as watched also files it on
+  // the "completed" shelf, so dashboard/achievement counts that read the
+  // Watchlist agree with the watch history. Never downgrade favorite/hidden.
+  if (src === "log" && seasonNumber == null && episodeNumber == null) {
+    await Watchlist.updateOne(
+      { userId, tmdbId, mediaType, status: { $nin: ["favorite", "hidden", "completed"] } },
+      { $set: { status: "completed" } },
+    );
+    await Watchlist.updateOne(
+      { userId, tmdbId, mediaType },
+      {
+        $setOnInsert: {
+          status: "completed",
+          title,
+          posterPath: posterPath ?? null,
+          voteAverage: voteAverage ?? 0,
+          genreIds: genreIds ?? [],
+          releaseDate: releaseDate ?? "",
+        },
+      },
+      { upsert: true },
+    );
+  }
 
   // Award achievement notifications as the user's watch count crosses milestones.
   const total = await WatchHistory.countDocuments({ userId });
@@ -106,6 +156,10 @@ export async function DELETE(req: NextRequest) {
 
   const seasonNumber = p.get("seasonNumber");
   const episodeNumber = p.get("episodeNumber");
+  // Optional source scoping — dismissing a continue-watching card passes
+  // source=stream so it removes only the play markers, never the user's
+  // manually-logged episode/watch history for the title.
+  const source = p.get("source");
 
   await connectDB();
   await WatchHistory.deleteMany({
@@ -114,6 +168,7 @@ export async function DELETE(req: NextRequest) {
     mediaType,
     ...(seasonNumber !== null ? { seasonNumber: Number(seasonNumber) } : {}),
     ...(episodeNumber !== null ? { episodeNumber: Number(episodeNumber) } : {}),
+    ...(source === "stream" || source === "log" ? { source } : {}),
   });
 
   return NextResponse.json({ ok: true });

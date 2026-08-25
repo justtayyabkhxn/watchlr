@@ -87,11 +87,14 @@ export function PosterCard({
   sizes = "(max-width: 640px) 40vw, 176px",
   priority = false,
   className = "w-40 shrink-0 sm:w-44",
+  href,
 }: {
   item: MediaItem;
   sizes?: string;
   priority?: boolean;
   className?: string;
+  /** Override the link target, e.g. resume deep-links from continue-watching. */
+  href?: string;
 }) {
   const [loaded, setLoaded] = useState(false);
   const [hovered, setHovered] = useState(false);
@@ -123,12 +126,13 @@ export function PosterCard({
   return (
     <motion.div
       whileHover={reduceMotion ? undefined : { y: -6, rotate: item.id % 2 === 0 ? 1.5 : -1.5 }}
-      transition={{ type: "spring", stiffness: 300, damping: 18 }}
+      whileTap={reduceMotion ? undefined : { scale: 0.97 }}
+      transition={{ type: "spring", stiffness: 300, damping: 22 }}
       onMouseEnter={() => setHovered(true)}
       className={`group ${className}`}
     >
       <Link
-        href={`/${item.mediaType}/${item.id}`}
+        href={href ?? `/${item.mediaType}/${item.id}`}
         prefetch={false}
         className="block focus-visible:outline-accent"
         aria-label={`${item.title} (${releaseYear(item.releaseDate)})`}
@@ -143,7 +147,7 @@ export function PosterCard({
               priority={priority}
               onLoad={() => setLoaded(true)}
               draggable={false}
-              className={`object-cover transition-all duration-500 ease-out group-hover:scale-[1.04] ${loaded ? "opacity-100" : "opacity-0"}`}
+              className={`object-cover transition-[transform,opacity] duration-500 ease-out group-hover:scale-[1.04] ${loaded ? "opacity-100" : "opacity-0"}`}
             />
           ) : (
             <div className="grid h-full place-items-center p-4 text-center text-sm font-bold text-muted">

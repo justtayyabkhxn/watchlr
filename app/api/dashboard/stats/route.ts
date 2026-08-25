@@ -26,7 +26,8 @@ export async function GET() {
         {
           $group: {
             _id: null,
-            watches: { $sum: 1 },
+            // playCount counts rewatches; older rows predate the field
+            watches: { $sum: { $ifNull: ["$playCount", 1] } },
             minutes: { $sum: "$runtime" },
             titleSet: { $addToSet: { tmdbId: "$tmdbId", mediaType: "$mediaType" } },
           },

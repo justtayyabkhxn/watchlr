@@ -37,17 +37,20 @@ async function loadProfile(rawUsername: string) {
 
   await connectDB();
   const user = await User.findOne({ username }).lean();
-  if (!user) return null;
+  // A private profile is indistinguishable from a nonexistent one.
+  if (!user || user.profilePrivate) return null;
+  const hideHistory = user.hideHistory ?? false;
+  const hideReviews = user.hideReviews ?? false;
   const uid = user._id as Types.ObjectId;
 
-  const [totalsAgg, seenRows, favorites, reviewDocs, ratingsCount, myRatings] =
+  const [totalsAgg, seenRows, favorites, reviewDocs, ratingsCount, myRatings, hiddenRows] =
     await Promise.all([
       WatchHistory.aggregate<{ watches: number; minutes: number; titles: number }>([
         { $match: { userId: uid } },
         {
           $group: {
             _id: null,
-            watches: { $sum: 1 },
+            watches: { $sum: { $ifNull: ["$playCount", 1] } },
             minutes: { $sum: "$runtime" },
             titleSet: { $addToSet: { tmdbId: "$tmdbId", mediaType: "$mediaType" } },
           },
@@ -79,18 +82,29 @@ async function loadProfile(rawUsername: string) {
         .sort({ updatedAt: -1 })
         .limit(18)
         .lean(),
-      Review.find({ userId: uid }).sort({ createdAt: -1 }).limit(10).lean(),
+      hideReviews
+        ? Promise.resolve([])
+        : Review.find({ userId: uid }).sort({ createdAt: -1 }).limit(10).lean(),
       Rating.countDocuments({ userId: uid }),
       Rating.find({ userId: uid }).lean(),
+      Watchlist.find({ userId: uid, status: "hidden" })
+        .select("tmdbId mediaType")
+        .lean(),
     ]);
 
   const ratingByTitle = new Map(
     myRatings.map((r) => [`${r.mediaType}-${r.tmdbId}`, r.value]),
   );
 
+  // Titles the user shelved as "hidden" never appear on the public page —
+  // watch history and reviews are filtered against this set.
+  const hidden = new Set(hiddenRows.map((h) => `${h.mediaType}-${h.tmdbId}`));
+
   // Reviews don't store title/poster — resolve from TMDB (cached fetches).
   const reviews: PublicReview[] = await Promise.all(
-    reviewDocs.map(async (r) => {
+    reviewDocs
+      .filter((r) => !hidden.has(`${r.mediaType}-${r.tmdbId}`))
+      .map(async (r) => {
       let title = `${r.mediaType} #${r.tmdbId}`;
       let posterPath: string | null = null;
       try {
@@ -124,11 +138,13 @@ async function loadProfile(rawUsername: string) {
     watches: totalsAgg[0]?.watches ?? 0,
     minutes: totalsAgg[0]?.minutes ?? 0,
     titles: totalsAgg[0]?.titles ?? 0,
-    reviews: reviewDocs.length,
+    reviews: reviews.length,
     ratings: ratingsCount,
   };
 
-  const seen: MediaItem[] = seenRows.map((r) => ({
+  const seen: MediaItem[] = (hideHistory ? [] : seenRows)
+    .filter((r) => !hidden.has(`${r._id.mediaType}-${r._id.tmdbId}`))
+    .map((r) => ({
     id: r._id.tmdbId,
     mediaType: r._id.mediaType,
     title: r.title,
@@ -163,6 +179,8 @@ async function loadProfile(rawUsername: string) {
     seen,
     favorites: favs,
     reviews,
+    hideHistory,
+    hideReviews,
   };
 }
 
@@ -240,7 +258,7 @@ export default async function PublicProfilePage({
           [formatHours(profile.totals.minutes), "watched", "-rotate-1"],
           [String(profile.totals.watches), "watches logged", ""],
           [String(profile.totals.titles), "unique titles", "rotate-1"],
-          [String(profile.totals.reviews), "reviews", ""],
+          ...(profile.hideReviews ? [] : [[String(profile.totals.reviews), "reviews", ""]]),
         ].map(([value, label, rotate]) => (
           <div key={label} className={`rounded-3xl border-2 border-ink bg-card p-4 shadow-offset sm:p-6 ${rotate}`}>
             <p className="text-offset text-3xl font-black tracking-tight sm:text-5xl">{value}</p>
@@ -266,6 +284,7 @@ export default async function PublicProfilePage({
 
       <div className="mt-16 space-y-16">
         {/* everything they've seen */}
+        {!profile.hideHistory && (
         <section>
           <SectionHeader overline={`what @${profile.username} watches`} title="Recently seen" />
           {profile.seen.length === 0 ? (
@@ -281,6 +300,7 @@ export default async function PublicProfilePage({
             </Rail>
           )}
         </section>
+        )}
 
         {/* favorites */}
         {profile.favorites.length > 0 && (
@@ -295,6 +315,7 @@ export default async function PublicProfilePage({
         )}
 
         {/* reviews */}
+        {!profile.hideReviews && (
         <section>
           <SectionHeader overline="hot takes" title="Reviews" />
           {profile.reviews.length === 0 ? (
@@ -352,6 +373,7 @@ export default async function PublicProfilePage({
             </ul>
           )}
         </section>
+        )}
       </div>
     </div>
   );

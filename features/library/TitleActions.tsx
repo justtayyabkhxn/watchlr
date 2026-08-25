@@ -10,6 +10,7 @@ import {
   EyeOff,
   Heart,
   Play,
+  Share2,
   Star,
   ThumbsDown,
 } from "lucide-react";
@@ -24,6 +25,7 @@ import {
   type TitlePayload,
 } from "./hooks";
 import { AddToCollection } from "./AddToCollection";
+import { ShareCardButton } from "./ShareCardButton";
 
 const STATUS_OPTIONS: { value: LibraryStatus; label: string; icon: typeof Eye }[] = [
   { value: "want_to_watch", label: "Want to watch", icon: Bookmark },
@@ -134,6 +136,48 @@ function RatingDistribution({
   );
 }
 
+/** Shares the title's page link — native share sheet where available
+ *  (mobile/Capacitor), clipboard copy everywhere else. */
+function ShareButton({ item }: { item: TitlePayload }) {
+  const [copied, setCopied] = useState(false);
+
+  const share = async () => {
+    const url = `${window.location.origin}/${item.mediaType}/${item.tmdbId}`;
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: item.title, url });
+      } catch {
+        // user closed the share sheet — nothing to do
+      }
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // clipboard unavailable (permissions) — the button just stays idle
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={share}
+      className={`inline-flex h-10 items-center gap-1.5 rounded-full border-2 border-ink px-4 text-sm font-bold shadow-offset-xs transition-all duration-150 hover:-translate-x-px hover:-translate-y-px hover:-rotate-1 hover:shadow-offset-sm active:translate-x-[2px] active:translate-y-[2px] active:rotate-0 active:shadow-none ${
+        copied ? "bg-accent" : "bg-card hover:bg-accent-soft"
+      }`}
+    >
+      {copied ? (
+        <Check className="size-4" strokeWidth={3} aria-hidden />
+      ) : (
+        <Share2 className="size-4" aria-hidden />
+      )}
+      {copied ? "Link copied" : "Share"}
+    </button>
+  );
+}
+
 export function TitleActions({ item }: { item: TitlePayload }) {
   const { status: authStatus } = useSession();
   const signedIn = authStatus === "authenticated";
@@ -141,7 +185,10 @@ export function TitleActions({ item }: { item: TitlePayload }) {
   const setStatus = useSetStatus(item);
   const logWatch = useLogWatch(item);
   const { data: history } = useTitleHistory(item.tmdbId, item.mediaType, signedIn);
-  const watchCount = history?.entries.length ?? 0;
+  // sum of playCounts, not row count — the server dedupes rows by episode
+  // and source, so rewatches live in playCount
+  const watchCount =
+    history?.entries.reduce((sum, e) => sum + (e.playCount ?? 1), 0) ?? 0;
 
   if (!signedIn) {
     return (
@@ -153,6 +200,8 @@ export function TitleActions({ item }: { item: TitlePayload }) {
           <Bookmark className="size-4" aria-hidden />
           Sign in to track this
         </Link>
+        <ShareButton item={item} />
+        <ShareCardButton item={item} />
       </div>
     );
   }
@@ -191,6 +240,8 @@ export function TitleActions({ item }: { item: TitlePayload }) {
             {watchCount > 0 ? `Watched ×${watchCount} — log again` : "Log a watch"}
           </button>
         )}
+        <ShareButton item={item} />
+        <ShareCardButton item={item} />
       </div>
       <StarRating tmdbId={item.tmdbId} mediaType={item.mediaType} />
     </div>

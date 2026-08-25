@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Award, Check, Download, Lock, Plus, Trophy, Upload, X } from "lucide-react";
+import { Award, Check, Download, Lock, Plus, Shield, Trophy, Upload, X } from "lucide-react";
 import { StickerField, type StickerSpec } from "@/features/decor/Doodads";
 
 const PAGE_STICKERS: StickerSpec[] = [
@@ -21,26 +21,73 @@ interface Profile {
   bio: string;
   favoriteGenres: string[];
   favoriteActors: string[];
+  profilePrivate: boolean;
+  hideHistory: boolean;
+  hideReviews: boolean;
   createdAt: string;
 }
 
 interface StatsTotals {
   totals: { watches: number; minutes: number; titles: number; completed: number; reviews: number; ratings: number };
+  genres: { name: string; count: number }[];
 }
 
 const GENRE_CHOICES = [...new Set(Object.values(GENRES))].sort();
 
-function achievements(t: StatsTotals["totals"]) {
-  return [
-    { name: "First frame", desc: "Log your first watch", earned: t.watches >= 1 },
-    { name: "Double digits", desc: "Log 10 watches", earned: t.watches >= 10 },
-    { name: "Century club", desc: "Log 100 watches", earned: t.watches >= 100 },
-    { name: "Day one", desc: "Watch 24+ hours total", earned: t.minutes >= 1440 },
-    { name: "Finisher", desc: "Complete 5 titles", earned: t.completed >= 5 },
-    { name: "Critic", desc: "Write 3 reviews", earned: t.reviews >= 3 },
-    { name: "Judge", desc: "Rate 10 titles", earned: t.ratings >= 10 },
-    { name: "Explorer", desc: "Watch 25 unique titles", earned: t.titles >= 25 },
+function achievements(t: StatsTotals["totals"], genreCount: number) {
+  const hours = (m: number) => formatHours(m);
+  const list: { name: string; desc: string; current: number; target: number; fmt?: (n: number) => string }[] = [
+    { name: "First frame", desc: "Log your first watch", current: t.watches, target: 1 },
+    { name: "Double digits", desc: "Log 10 watches", current: t.watches, target: 10 },
+    { name: "Century club", desc: "Log 100 watches", current: t.watches, target: 100 },
+    { name: "Day one", desc: "Watch 24+ hours total", current: t.minutes, target: 1440, fmt: hours },
+    { name: "Binge week", desc: "Watch a full week of screen time", current: t.minutes, target: 10080, fmt: hours },
+    { name: "Finisher", desc: "Complete 5 titles", current: t.completed, target: 5 },
+    { name: "Critic", desc: "Write 3 reviews", current: t.reviews, target: 3 },
+    { name: "Judge", desc: "Rate 10 titles", current: t.ratings, target: 10 },
+    { name: "Explorer", desc: "Watch 25 unique titles", current: t.titles, target: 25 },
+    { name: "Genre hopper", desc: "Watch across 5 genres", current: genreCount, target: 5 },
   ];
+  return list.map((a) => ({ ...a, earned: a.current >= a.target }));
+}
+
+function ToggleRow({
+  label,
+  desc,
+  on,
+  onChange,
+}: {
+  label: string;
+  desc: string;
+  on: boolean;
+  onChange: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={on}
+      onClick={onChange}
+      className="flex w-full items-center justify-between gap-4 rounded-2xl border-2 border-border p-4 text-left transition-colors hover:bg-surface-hover"
+    >
+      <span>
+        <span className="block text-sm font-black">{label}</span>
+        <span className="block text-xs font-semibold text-muted">{desc}</span>
+      </span>
+      <span
+        aria-hidden
+        className={`relative h-6 w-11 shrink-0 rounded-full border-2 border-ink transition-colors ${
+          on ? "bg-accent" : "bg-border"
+        }`}
+      >
+        <span
+          className={`absolute top-1/2 size-4 -translate-y-1/2 rounded-full bg-ink transition-all ${
+            on ? "left-[calc(100%-1.125rem)]" : "left-0.5"
+          }`}
+        />
+      </span>
+    </button>
+  );
 }
 
 export function ProfileView() {
@@ -68,6 +115,9 @@ export function ProfileView() {
   const [genres, setGenres] = useState<string[]>([]);
   const [actors, setActors] = useState<string[]>([]);
   const [actorInput, setActorInput] = useState("");
+  const [profilePrivate, setProfilePrivate] = useState(false);
+  const [hideHistory, setHideHistory] = useState(false);
+  const [hideReviews, setHideReviews] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [saveError, setSaveError] = useState("");
 
@@ -77,6 +127,9 @@ export function ProfileView() {
       setUsername(profile.username);
       setGenres(profile.favoriteGenres);
       setActors(profile.favoriteActors);
+      setProfilePrivate(profile.profilePrivate);
+      setHideHistory(profile.hideHistory);
+      setHideReviews(profile.hideReviews);
     }
   }, [profile]);
 
@@ -85,7 +138,15 @@ export function ProfileView() {
       const res = await fetch("/api/profile", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ bio, username, favoriteGenres: genres, favoriteActors: actors }),
+        body: JSON.stringify({
+          bio,
+          username,
+          favoriteGenres: genres,
+          favoriteActors: actors,
+          profilePrivate,
+          hideHistory,
+          hideReviews,
+        }),
       });
       if (!res.ok) {
         const json = await res.json().catch(() => ({}));
@@ -291,35 +352,96 @@ export function ProfileView() {
 
         <section className="rounded-3xl border-2 border-border bg-card p-6">
           <h2 className="mb-4 flex items-center gap-2 text-lg font-black">
+            <Shield className="size-5 text-accent" aria-hidden /> Privacy
+          </h2>
+          <div className="space-y-3">
+            <ToggleRow
+              label="Private profile"
+              desc="Your public page acts like it doesn't exist"
+              on={profilePrivate}
+              onChange={() => {
+                setProfilePrivate(!profilePrivate);
+                setDirty(true);
+              }}
+            />
+            <ToggleRow
+              label="Hide watch history"
+              desc="Keep your recently seen titles off your public page"
+              on={hideHistory}
+              onChange={() => {
+                setHideHistory(!hideHistory);
+                setDirty(true);
+              }}
+            />
+            <ToggleRow
+              label="Hide reviews"
+              desc="Keep your reviews off your public page"
+              on={hideReviews}
+              onChange={() => {
+                setHideReviews(!hideReviews);
+                setDirty(true);
+              }}
+            />
+          </div>
+          {dirty && (
+            <Button size="sm" className="mt-5" loading={save.isPending} onClick={() => save.mutate()}>
+              Save changes
+            </Button>
+          )}
+        </section>
+
+        <section className="rounded-3xl border-2 border-border bg-card p-6">
+          <h2 className="mb-4 flex items-center gap-2 text-lg font-black">
             <Award className="size-5 text-accent" aria-hidden /> Achievements
           </h2>
           {t ? (
             <ul className="grid gap-3 sm:grid-cols-2">
-              {achievements(t).map((a) => (
-                <li
-                  key={a.name}
-                  className={`flex items-center gap-3 rounded-2xl border-2 p-4 ${
-                    a.earned ? "border-accent bg-surface-hover" : "border-dashed border-border opacity-60"
-                  }`}
-                >
-                  <span
-                    className={`grid size-10 shrink-0 -rotate-6 place-items-center rounded-xl text-lg ${
-                      a.earned ? "bg-accent" : "bg-border"
+              {achievements(t, stats?.genres.length ?? 0).map((a) => {
+                const fmt = a.fmt ?? String;
+                const pct = Math.min(100, Math.round((a.current / a.target) * 100));
+                return (
+                  <li
+                    key={a.name}
+                    className={`flex items-center gap-3 rounded-2xl border-2 p-4 ${
+                      a.earned ? "border-accent bg-surface-hover" : "border-dashed border-border"
                     }`}
-                    aria-hidden
                   >
-                    {a.earned ? (
-                      <Trophy className="size-5" strokeWidth={2.25} />
-                    ) : (
-                      <Lock className="size-5 text-muted" strokeWidth={2.25} />
-                    )}
-                  </span>
-                  <div>
-                    <p className="text-sm font-black">{a.name}</p>
-                    <p className="text-xs font-semibold text-muted">{a.desc}</p>
-                  </div>
-                </li>
-              ))}
+                    <span
+                      className={`grid size-10 shrink-0 -rotate-6 place-items-center rounded-xl text-lg ${
+                        a.earned ? "bg-accent" : "bg-border"
+                      }`}
+                      aria-hidden
+                    >
+                      {a.earned ? (
+                        <Trophy className="size-5" strokeWidth={2.25} />
+                      ) : (
+                        <Lock className="size-5 text-muted" strokeWidth={2.25} />
+                      )}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className={`text-sm font-black ${a.earned ? "" : "text-muted"}`}>{a.name}</p>
+                      <p className="text-xs font-semibold text-muted">{a.desc}</p>
+                      {!a.earned && (
+                        <>
+                          <div
+                            role="progressbar"
+                            aria-valuenow={pct}
+                            aria-valuemin={0}
+                            aria-valuemax={100}
+                            aria-label={`${a.name} progress`}
+                            className="mt-2 h-1.5 overflow-hidden rounded-full bg-border"
+                          >
+                            <div className="h-full rounded-full bg-accent" style={{ width: `${pct}%` }} />
+                          </div>
+                          <p className="mt-1 text-[11px] font-black text-muted">
+                            {fmt(a.current)} / {fmt(a.target)}
+                          </p>
+                        </>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           ) : (
             <Skeleton className="h-32 w-full" />

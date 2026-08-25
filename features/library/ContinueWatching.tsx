@@ -16,6 +16,17 @@ interface HistoryEntry {
   seasonNumber: number | null;
   episodeNumber: number | null;
   watchedAt: string;
+  /** true = came from the stream player (has a resume point); false = the
+   *  user marked it "watching" in their library. */
+  fromStream: boolean;
+}
+
+interface WatchingEntry {
+  tmdbId: number;
+  mediaType: "movie" | "tv";
+  title: string;
+  posterPath: string | null;
+  updatedAt: string;
 }
 
 function timeAgo(iso: string): string {
@@ -36,23 +47,49 @@ export function ContinueWatching() {
   const qc = useQueryClient();
   const { data, isLoading } = useQuery({
     queryKey: ["history", "continue-watching"],
-    queryFn: async (): Promise<{ entries: HistoryEntry[] }> => {
+    queryFn: async (): Promise<{ entries: Omit<HistoryEntry, "fromStream">[] }> => {
       const res = await fetch("/api/history?source=stream");
       if (!res.ok) throw new Error("Failed to load watch history");
       return res.json();
     },
   });
 
-  const remove = useMutation({
-    mutationFn: async (e: HistoryEntry) => {
-      await fetch(`/api/history?tmdbId=${e.tmdbId}&mediaType=${e.mediaType}`, {
-        method: "DELETE",
-      });
+  // Titles manually marked "watching" belong here too — same concept the
+  // home rail shows, so the two surfaces agree.
+  const { data: watching, isLoading: watchingLoading } = useQuery({
+    queryKey: ["library", "watching"],
+    queryFn: async (): Promise<{ entries: WatchingEntry[] }> => {
+      const res = await fetch("/api/library?status=watching");
+      if (!res.ok) throw new Error("Failed to load library");
+      return res.json();
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["history"] }),
   });
 
-  if (isLoading) {
+  const remove = useMutation({
+    mutationFn: async (e: HistoryEntry) => {
+      // Dismissing removes only what put the card here: the stream play
+      // markers, or the "watching" shelf entry. Never the user's manually
+      // logged watch history.
+      if (e.fromStream) {
+        await fetch(
+          `/api/history?tmdbId=${e.tmdbId}&mediaType=${e.mediaType}&source=stream`,
+          { method: "DELETE" },
+        );
+      } else {
+        await fetch(`/api/library?tmdbId=${e.tmdbId}&mediaType=${e.mediaType}`, {
+          method: "DELETE",
+        });
+      }
+    },
+    onSuccess: (_data, e) => {
+      qc.invalidateQueries({ queryKey: ["history"] });
+      qc.invalidateQueries({ queryKey: ["library"] });
+      qc.invalidateQueries({ queryKey: ["library-status", e.mediaType, e.tmdbId] });
+      qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
+    },
+  });
+
+  if (isLoading || watchingLoading) {
     return (
       <div className="grid grid-cols-2 gap-x-5 gap-y-8 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
         {Array.from({ length: 5 }).map((_, i) => (
@@ -62,21 +99,37 @@ export function ContinueWatching() {
     );
   }
 
-  // API returns newest-first; keep only the most recent entry per title.
+  // Merge stream plays with "watching"-shelf titles, newest activity first,
+  // one card per title (stream entries win — they carry the resume point).
+  const merged: HistoryEntry[] = [
+    ...(data?.entries ?? []).map((e) => ({ ...e, fromStream: true })),
+    ...(watching?.entries ?? []).map((w) => ({
+      tmdbId: w.tmdbId,
+      mediaType: w.mediaType,
+      title: w.title,
+      posterPath: w.posterPath,
+      seasonNumber: null,
+      episodeNumber: null,
+      watchedAt: w.updatedAt,
+      fromStream: false,
+    })),
+  ];
   const seen = new Set<string>();
-  const entries = (data?.entries ?? []).filter((e) => {
-    const key = `${e.mediaType}-${e.tmdbId}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
+  const entries = merged
+    .sort((a, b) => new Date(b.watchedAt).getTime() - new Date(a.watchedAt).getTime())
+    .filter((e) => {
+      const key = `${e.mediaType}-${e.tmdbId}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
 
   if (entries.length === 0) {
     return (
       <EmptyState
         icon={PlayCircle}
         title="Nothing in progress"
-        body="Hit play on any movie or show and it'll land here so you can pick up where you left off."
+        body="Hit play on any movie or show — or mark one as watching — and it'll land here so you can pick up where you left off."
         cta={{ href: "/search", label: "Find something to watch" }}
       />
     );
@@ -93,7 +146,7 @@ export function ContinueWatching() {
         // over season boundaries); movies just autoplay where they left off.
         const href = isEpisode
           ? `/tv/${e.tmdbId}?s=${e.seasonNumber}&e=${e.episodeNumber}&resume=next`
-          : e.mediaType === "movie"
+          : e.mediaType === "movie" && e.fromStream
             ? `/movie/${e.tmdbId}?play=1`
             : `/${e.mediaType}/${e.tmdbId}`;
         return (

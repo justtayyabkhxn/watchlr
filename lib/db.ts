@@ -11,6 +11,7 @@ declare global {
     | {
         conn: typeof mongoose | null;
         promise: Promise<typeof mongoose> | null;
+        indexesSynced?: boolean;
       }
     | undefined;
 }
@@ -34,6 +35,17 @@ export async function connectDB(): Promise<typeof mongoose> {
   } catch (err) {
     cached.promise = null;
     throw err;
+  }
+
+  // One-time index migration per cold start: WatchHistory's unique key gained
+  // a `source` field; syncIndexes drops the old five-field unique index that
+  // would otherwise block log+stream rows coexisting for the same title.
+  if (!cached.indexesSynced) {
+    cached.indexesSynced = true;
+    const { WatchHistory } = await import("@/models/WatchHistory");
+    WatchHistory.syncIndexes().catch(() => {
+      cached.indexesSynced = false;
+    });
   }
 
   return cached.conn;

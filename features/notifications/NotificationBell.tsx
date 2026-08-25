@@ -110,7 +110,11 @@ export function NotificationBell() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -8, scale: 0.98 }}
             transition={{ type: "spring", stiffness: 400, damping: 30 }}
-            className="absolute right-0 top-12 z-50 w-80 overflow-hidden rounded-3xl border-2 border-ink bg-card shadow-offset-lg"
+            // phones: fixed sheet spanning the viewport under the navbar (the
+            // header's backdrop-filter makes it the containing block, so these
+            // offsets resolve against the full-width sticky header, not the
+            // page); sm+: dropdown anchored to the bell
+            className="fixed inset-x-4 top-[4.75rem] z-50 overflow-hidden rounded-3xl border-2 border-ink bg-card shadow-offset-lg sm:absolute sm:inset-x-auto sm:right-0 sm:top-12 sm:w-80"
           >
             <div className="flex items-center justify-between border-b-2 border-border px-4 py-3">
               <p className="text-sm font-black">Notifications</p>
@@ -125,7 +129,7 @@ export function NotificationBell() {
               )}
             </div>
 
-            <div className="max-h-96 overflow-y-auto">
+            <div className="max-h-[min(24rem,60dvh)] overflow-y-auto overscroll-contain">
               {items.length === 0 ? (
                 <p className="px-4 py-8 text-center text-sm font-bold text-muted">
                   Nothing here yet. Keep watching and achievements will land here.

@@ -8,6 +8,7 @@ import { useSession, signOut } from "next-auth/react";
 import { Clapperboard, Menu, Search, X, LogOut } from "lucide-react";
 import { useUIStore } from "@/store/ui";
 import { NotificationBell } from "@/features/notifications/NotificationBell";
+import { MobileTabBar } from "@/components/layout/MobileTabBar";
 
 const links = [
   { href: "/", label: "Home" },
@@ -52,6 +53,7 @@ export function Navbar() {
   const { mobileMenuOpen, setMobileMenuOpen } = useUIStore();
 
   return (
+    <>
     <header className="sticky top-0 z-50 border-b-2 border-ink bg-background/95 shadow-offset-down backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-6xl items-center gap-6 px-6">
         <Link
@@ -96,7 +98,7 @@ export function Navbar() {
         </nav>
 
         <div className="ml-auto flex items-center gap-3">
-          <SearchBox className="group hidden w-48 transition-[width] duration-300 ease-out focus-within:w-72 lg:block" />
+          <SearchBox className="group hidden w-40 transition-[width] duration-300 ease-out focus-within:w-64 md:block lg:w-48 lg:focus-within:w-72" />
           {session?.user && <NotificationBell />}
           {session?.user ? (
             <div className="hidden items-center gap-2 md:flex">
@@ -141,13 +143,18 @@ export function Navbar() {
       <AnimatePresence>
         {mobileMenuOpen && (
           <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+            initial={{ height: 0 }}
+            animate={{ height: "auto" }}
+            exit={{ height: 0 }}
+            transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
             className="overflow-hidden border-t-2 border-border md:hidden"
           >
-            <div className="space-y-1 px-6 py-4">
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0, transition: { duration: 0.28, ease: "easeOut", delay: 0.06 } }}
+              exit={{ opacity: 0, transition: { duration: 0.12 } }}
+              className="space-y-1 px-6 py-4"
+            >
               <SearchBox className="mb-3" />
               {links.map((link) => (
                 <Link
@@ -186,10 +193,12 @@ export function Navbar() {
                   Sign in
                 </Link>
               )}
-            </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
     </header>
+    <MobileTabBar />
+    </>
   );
 }

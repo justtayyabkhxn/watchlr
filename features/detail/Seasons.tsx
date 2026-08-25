@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { useSession } from "next-auth/react";
 import { useQuery } from "@tanstack/react-query";
@@ -9,7 +9,9 @@ import type { TmdbSeasonDetails, TmdbSeasonSummary } from "@/types/tmdb";
 import { formatRuntime, tmdbImage } from "@/lib/media";
 import { Skeleton } from "@/components/ui/Skeleton";
 import {
+  useLibraryStatus,
   useLogWatch,
+  useSetStatus,
   useTitleHistory,
   useUnlogWatch,
   type TitlePayload,
@@ -122,6 +124,9 @@ export function Seasons({
   const { status: authStatus } = useSession();
   const signedIn = authStatus === "authenticated";
   const { data: history } = useTitleHistory(tvId, "tv", signedIn);
+  const { data: libraryStatus } = useLibraryStatus(tvId, "tv", signedIn);
+  const setStatus = useSetStatus(item);
+  const autoCompleted = useRef(false);
   const [open, setOpen] = useState<number | null>(null);
 
   const watched = new Set(
@@ -131,12 +136,25 @@ export function Seasons({
   );
 
   const realSeasons = seasons.filter((s) => s.season_number > 0);
-  if (realSeasons.length === 0) return null;
 
   // Overall progress across every non-special season.
   const totalEpisodes = realSeasons.reduce((sum, s) => sum + (s.episode_count ?? 0), 0);
   const totalWatched = [...watched].filter((k) => !k.startsWith("0-")).length;
   const overallPct = totalEpisodes ? Math.round((totalWatched / totalEpisodes) * 100) : 0;
+  const seriesComplete = totalEpisodes > 0 && totalWatched >= totalEpisodes;
+
+  // Cross-write: ticking the last episode also files the series on the
+  // "completed" shelf so dashboard/achievement counts see it. Runs once per
+  // mount, never downgrades favorite/hidden, and only while data is settled.
+  useEffect(() => {
+    if (!signedIn || !seriesComplete || autoCompleted.current) return;
+    if (libraryStatus === undefined) return;
+    if (libraryStatus === "completed" || libraryStatus === "favorite" || libraryStatus === "hidden") return;
+    autoCompleted.current = true;
+    setStatus.mutate("completed");
+  }, [signedIn, seriesComplete, libraryStatus, setStatus]);
+
+  if (realSeasons.length === 0) return null;
 
   return (
     <div className="space-y-4">
@@ -144,7 +162,7 @@ export function Seasons({
         <div className="rounded-3xl border-2 border-border bg-card p-5">
           <div className="flex items-baseline justify-between gap-3">
             <p className="text-sm font-black">
-              {overallPct === 100 ? "Series complete 🎉" : "Your progress"}
+              {overallPct === 100 ? "Series complete" : "Your progress"}
             </p>
             <p className="text-xs font-bold text-muted">
               {totalWatched} / {totalEpisodes} episodes · {overallPct}%

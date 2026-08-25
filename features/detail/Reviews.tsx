@@ -65,6 +65,7 @@ export function Reviews({ tmdbId, mediaType }: { tmdbId: number; mediaType: Medi
       setContent("");
       setHasSpoilers(false);
       qc.invalidateQueries({ queryKey: ["reviews", mediaType, tmdbId] });
+      qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
     },
   });
 
@@ -72,7 +73,10 @@ export function Reviews({ tmdbId, mediaType }: { tmdbId: number; mediaType: Medi
     mutationFn: async (id: string) => {
       await fetch(`/api/reviews?id=${id}`, { method: "DELETE" });
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["reviews", mediaType, tmdbId] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["reviews", mediaType, tmdbId] });
+      qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
+    },
   });
 
   const reviews = data?.reviews ?? [];

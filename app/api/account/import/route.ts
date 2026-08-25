@@ -6,6 +6,7 @@ import { Rating } from "@/models/Rating";
 import { Review } from "@/models/Review";
 import { Collection } from "@/models/Collection";
 import { WatchHistory } from "@/models/WatchHistory";
+import { checkWatchMilestone } from "@/lib/notifications";
 
 const isMediaType = (v: unknown): v is "movie" | "tv" => v === "movie" || v === "tv";
 
@@ -117,6 +118,9 @@ export async function POST(req: Request) {
         mediaType: h.mediaType,
         seasonNumber: h.seasonNumber ?? null,
         episodeNumber: h.episodeNumber ?? null,
+        // source is part of the unique key — keying on it here keeps a
+        // re-import from rewriting a stream row as a log row (or vice versa)
+        source: h.source === "stream" ? "stream" : "log",
       },
       {
         $set: {
@@ -124,13 +128,19 @@ export async function POST(req: Request) {
           posterPath: h.posterPath ?? null,
           runtime: h.runtime ?? 0,
           genreIds: Array.isArray(h.genreIds) ? h.genreIds : [],
-          source: h.source === "stream" ? "stream" : "log",
           watchedAt: h.watchedAt ? new Date(h.watchedAt) : new Date(),
         },
       },
       { upsert: true },
     );
     counts.history++;
+  }
+
+  // Imported watches count toward milestones too — without this, a count that
+  // jumps past a milestone would leave it unreachable forever.
+  if (counts.history > 0) {
+    const total = await WatchHistory.countDocuments({ userId });
+    await checkWatchMilestone(userId, total);
   }
 
   return NextResponse.json({ ok: true, imported: counts });

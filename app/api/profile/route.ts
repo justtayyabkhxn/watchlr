@@ -18,6 +18,9 @@ export async function GET() {
     bio: user.bio,
     favoriteGenres: user.favoriteGenres,
     favoriteActors: user.favoriteActors,
+    profilePrivate: user.profilePrivate ?? false,
+    hideHistory: user.hideHistory ?? false,
+    hideReviews: user.hideReviews ?? false,
     createdAt: user.createdAt,
   });
 }
@@ -60,6 +63,9 @@ export async function PATCH(req: Request) {
       .map((a: string) => a.trim().slice(0, 60))
       .slice(0, 10);
   }
+  if (typeof body.profilePrivate === "boolean") update.profilePrivate = body.profilePrivate;
+  if (typeof body.hideHistory === "boolean") update.hideHistory = body.hideHistory;
+  if (typeof body.hideReviews === "boolean") update.hideReviews = body.hideReviews;
 
   await connectDB();
   await User.findByIdAndUpdate(userId, { $set: update });

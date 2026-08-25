@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, MoveHorizontal } from "lucide-react";
 
 /**
@@ -19,6 +19,8 @@ export function Rail({
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const drag = useRef({ startX: 0, startScroll: 0, moved: 0, pointerId: -1, pressed: false });
+  // velocity in px/ms, sampled during the drag so release can glide
+  const momentum = useRef({ velocity: 0, lastX: 0, lastT: 0, raf: 0 });
   const [dragging, setDragging] = useState(false);
   const [atStart, setAtStart] = useState(true);
   const [atEnd, setAtEnd] = useState(false);
@@ -37,11 +39,24 @@ export function Rail({
     });
   };
 
+  const stopMomentum = () => {
+    cancelAnimationFrame(momentum.current.raf);
+    momentum.current.velocity = 0;
+  };
+
+  useEffect(() => {
+    const m = momentum.current;
+    return () => cancelAnimationFrame(m.raf);
+  }, []);
+
   const onPointerDown = (e: React.PointerEvent) => {
     // touch gets native scrolling; mouse gets grab-to-drag
     if (e.pointerType !== "mouse" || e.button !== 0) return;
     const el = ref.current;
     if (!el) return;
+    stopMomentum();
+    momentum.current.lastX = e.clientX;
+    momentum.current.lastT = e.timeStamp;
     drag.current = {
       startX: e.clientX,
       startScroll: el.scrollLeft,
@@ -69,11 +84,36 @@ export function Rail({
       setDragging(true);
     }
     el.scrollLeft = drag.current.startScroll - dx;
+
+    // sample velocity, lightly smoothed so one jittery frame doesn't dominate
+    const dt = e.timeStamp - momentum.current.lastT;
+    if (dt > 0) {
+      const v = (e.clientX - momentum.current.lastX) / dt;
+      momentum.current.velocity = momentum.current.velocity * 0.4 + v * 0.6;
+      momentum.current.lastX = e.clientX;
+      momentum.current.lastT = e.timeStamp;
+    }
   };
 
   const endDrag = () => {
+    const wasDragging = dragging;
     drag.current.pressed = false;
     setDragging(false);
+
+    // let go with speed → glide with exponential decay, like native fling
+    if (!wasDragging || Math.abs(momentum.current.velocity) < 0.25) return;
+    let v = momentum.current.velocity;
+    let last = performance.now();
+    const glide = (now: number) => {
+      const el = ref.current;
+      if (!el) return;
+      const dt = now - last;
+      last = now;
+      el.scrollLeft -= v * dt;
+      v *= Math.pow(0.994, dt);
+      if (Math.abs(v) > 0.02) momentum.current.raf = requestAnimationFrame(glide);
+    };
+    momentum.current.raf = requestAnimationFrame(glide);
   };
 
   const onClickCapture = (e: React.MouseEvent) => {
@@ -98,7 +138,7 @@ export function Rail({
         role="region"
         aria-label={label}
         tabIndex={0}
-        className={`no-scrollbar -mx-6 flex gap-5 overflow-x-auto px-6 pb-2 pt-1 ${
+        className={`no-scrollbar -mx-6 flex gap-4 overflow-x-auto overscroll-x-contain px-6 pb-2 pt-1 sm:gap-5 ${
           dragging
             ? "cursor-grabbing select-none *:pointer-events-none"
             : "cursor-grab"

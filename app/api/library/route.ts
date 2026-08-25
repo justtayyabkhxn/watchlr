@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getUserId } from "@/lib/auth";
 import { connectDB } from "@/lib/db";
 import { LIBRARY_STATUSES, Watchlist, type LibraryStatus } from "@/models/Watchlist";
+import { WatchHistory } from "@/models/WatchHistory";
+import { checkWatchMilestone } from "@/lib/notifications";
 
 export async function GET(req: NextRequest) {
   const userId = await getUserId();
@@ -45,7 +47,7 @@ export async function POST(req: Request) {
   if (!userId) return NextResponse.json({ error: "Not signed in." }, { status: 401 });
 
   const body = await req.json().catch(() => null);
-  const { tmdbId, mediaType, status, title, posterPath, voteAverage, genreIds, releaseDate } = body ?? {};
+  const { tmdbId, mediaType, status, title, posterPath, voteAverage, genreIds, releaseDate, runtime } = body ?? {};
 
   if (
     !Number.isInteger(tmdbId) ||
@@ -72,6 +74,31 @@ export async function POST(req: Request) {
     },
     { upsert: true },
   );
+
+  // Cross-write: "completed" implies the title was watched, so make sure at
+  // least one history row exists — otherwise the dashboard tells a user with
+  // 50 completed films to "log their first watch". $setOnInsert keeps an
+  // existing log's date/runtime untouched.
+  if (status === "completed") {
+    const result = await WatchHistory.updateOne(
+      { userId, tmdbId, mediaType, seasonNumber: null, episodeNumber: null, source: "log" },
+      {
+        $setOnInsert: {
+          title,
+          posterPath: posterPath ?? null,
+          runtime: Number(runtime) || 0,
+          genreIds: genreIds ?? [],
+          playCount: 1,
+          watchedAt: new Date(),
+        },
+      },
+      { upsert: true },
+    );
+    if (result.upsertedCount > 0) {
+      const total = await WatchHistory.countDocuments({ userId });
+      await checkWatchMilestone(userId, total);
+    }
+  }
 
   return NextResponse.json({ ok: true, status });
 }

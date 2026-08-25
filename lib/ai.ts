@@ -2,7 +2,7 @@ import "server-only";
 import Groq from "groq-sdk";
 import type { SummaryType } from "@/models/AISummary";
 
-export const AI_MODEL = "llama-3.3-70b-versatile";
+export const AI_MODEL = "openai/gpt-oss-120b";
 
 /* Bump when prompts change — stored in the cache's `model` field so stale
    summaries in Mongo regenerate in the new voice instead of being served. */

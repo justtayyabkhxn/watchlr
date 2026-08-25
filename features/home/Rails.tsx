@@ -102,43 +102,80 @@ export async function ContinueWatchingRail() {
   }
 
   await connectDB();
-  const rows = await Watchlist.find({ userId: session.user.id, status: "watching" })
-    .sort({ updatedAt: -1 })
-    .limit(12)
-    .lean();
+  // Two signals feed this rail: titles actually played in the built-in
+  // player (WatchHistory source "stream" — the same data as the library's
+  // continue-watching tab) and titles manually marked "watching". Merge
+  // both, newest activity first.
+  const [watchingRows, streamRows] = await Promise.all([
+    Watchlist.find({ userId: session.user.id, status: "watching" })
+      .sort({ updatedAt: -1 })
+      .limit(12)
+      .lean(),
+    WatchHistory.find({ userId: session.user.id, source: "stream" })
+      .sort({ watchedAt: -1 })
+      .limit(40)
+      .lean(),
+  ]);
 
-  if (rows.length === 0) {
+  const merged = [
+    ...streamRows.map((r) => ({ row: r, at: r.watchedAt ?? new Date(0), stream: true as const })),
+    ...watchingRows.map((r) => ({ row: r, at: r.updatedAt ?? new Date(0), stream: false as const })),
+  ].sort((a, b) => b.at.getTime() - a.at.getTime());
+
+  const seen = new Set<string>();
+  const items: { item: MediaItem; href: string }[] = [];
+  for (const { row, stream } of merged) {
+    const key = `${row.mediaType}-${row.tmdbId}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    // Stream rows carry the resume point — deep-link the same way the
+    // library's continue-watching tab does instead of dropping the user at
+    // a bare detail page with the player reset to S1E1.
+    const season = "seasonNumber" in row ? row.seasonNumber : null;
+    const episode = "episodeNumber" in row ? row.episodeNumber : null;
+    const href =
+      stream && row.mediaType === "tv" && season != null && episode != null
+        ? `/tv/${row.tmdbId}?s=${season}&e=${episode}&resume=next`
+        : stream && row.mediaType === "movie"
+          ? `/movie/${row.tmdbId}?play=1`
+          : `/${row.mediaType}/${row.tmdbId}`;
+    items.push({
+      href,
+      item: {
+        id: row.tmdbId,
+        mediaType: row.mediaType,
+        title: row.title,
+        overview: "",
+        posterPath: row.posterPath ?? null,
+        backdropPath: null,
+        releaseDate: ("releaseDate" in row ? row.releaseDate : "") ?? "",
+        voteAverage: ("voteAverage" in row ? row.voteAverage : 0) ?? 0,
+        genreIds: row.genreIds ?? [],
+      },
+    });
+    if (items.length >= 12) break;
+  }
+
+  if (items.length === 0) {
     return (
       <section className="mx-auto max-w-6xl px-6">
         {header}
         <EmptyState
           icon={History}
           title="Nothing in progress (yet)"
-          body="Mark a title as “Watching” and it'll be waiting for you right here."
+          body="Hit play on anything — or mark a title as “Watching” — and it'll be waiting for you right here."
           cta={{ href: "/search", label: "Find something" }}
         />
       </section>
     );
   }
 
-  const items: MediaItem[] = rows.map((r) => ({
-    id: r.tmdbId,
-    mediaType: r.mediaType,
-    title: r.title,
-    overview: "",
-    posterPath: r.posterPath ?? null,
-    backdropPath: null,
-    releaseDate: r.releaseDate ?? "",
-    voteAverage: r.voteAverage ?? 0,
-    genreIds: r.genreIds ?? [],
-  }));
-
   return (
     <section className="mx-auto max-w-6xl px-6">
       {header}
       <Rail label="Continue watching">
-        {items.map((item) => (
-          <PosterCard key={`${item.mediaType}-${item.id}`} item={item} />
+        {items.map(({ item, href }) => (
+          <PosterCard key={`${item.mediaType}-${item.id}`} item={item} href={href} />
         ))}
       </Rail>
     </section>

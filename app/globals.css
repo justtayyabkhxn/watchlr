@@ -157,6 +157,14 @@ body::before {
   }
 }
 
+/* clearance for the fixed mobile tab bar (components/layout/MobileTabBar.tsx);
+   scoped with :has so auth screens (which hide the bar) keep their layout */
+@media (max-width: 767px) {
+  body:has([data-mobile-tabbar]) {
+    padding-bottom: calc(4rem + env(safe-area-inset-bottom));
+  }
+}
+
 /* keep case where it's load-bearing: user input and code identifiers */
 input,
 textarea,

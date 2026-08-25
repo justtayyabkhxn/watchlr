@@ -51,6 +51,44 @@ export function genreName(id: number): string {
   return GENRES[id] ?? "";
 }
 
+/**
+ * TMDB genre ids are per-media-type: 878 (Sci-Fi) only exists for movies,
+ * 10765 (Sci-Fi & Fantasy) only for TV. These pairs are the true equivalents
+ * so one genre filter works on both tabs; ids without a counterpart
+ * (e.g. Horror on TV) pass through unchanged.
+ */
+const GENRE_EQUIVALENTS: [movie: number, tv: number][] = [
+  [28, 10759], // action ↔ action & adventure
+  [12, 10759], // adventure ↔ action & adventure
+  [878, 10765], // sci-fi ↔ sci-fi & fantasy
+  [14, 10765], // fantasy ↔ sci-fi & fantasy
+  [10752, 10768], // war ↔ war & politics
+  [10751, 10762], // family ↔ kids (family also exists on tv; kids maps back)
+];
+
+const MOVIE_TO_TV = new Map<number, number>();
+const TV_TO_MOVIE = new Map<number, number>();
+for (const [movie, tv] of GENRE_EQUIVALENTS) {
+  if (!MOVIE_TO_TV.has(movie)) MOVIE_TO_TV.set(movie, tv);
+  if (!TV_TO_MOVIE.has(tv)) TV_TO_MOVIE.set(tv, movie);
+}
+// family is valid on both types — never translate it away from itself
+MOVIE_TO_TV.delete(10751);
+
+/** Translate a genre id to the given media type's vocabulary when an
+ *  equivalent exists; otherwise return it unchanged. */
+export function genreIdForType(id: number, mediaType: "movie" | "tv"): number {
+  return (mediaType === "tv" ? MOVIE_TO_TV.get(id) : TV_TO_MOVIE.get(id)) ?? id;
+}
+
+/** Does an item's genre list match a selected genre id, counting the
+ *  cross-media-type equivalent as a match? */
+export function genreIdMatches(selectedId: number, itemGenreIds: number[]): boolean {
+  if (itemGenreIds.includes(selectedId)) return true;
+  const alt = MOVIE_TO_TV.get(selectedId) ?? TV_TO_MOVIE.get(selectedId);
+  return alt != null && itemGenreIds.includes(alt);
+}
+
 export function releaseYear(date: string | null | undefined): string {
   return date ? date.slice(0, 4) : "TBA";
 }

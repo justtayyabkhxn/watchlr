@@ -49,6 +49,10 @@ export function useSetStatus(item: TitlePayload) {
     onSuccess: (status) => {
       qc.setQueryData(["library-status", item.mediaType, item.tmdbId], status);
       qc.invalidateQueries({ queryKey: ["library"] });
+      // "completed" cross-writes a history row server-side, and any status
+      // change moves the dashboard's completed count
+      qc.invalidateQueries({ queryKey: ["history"] });
+      qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
     },
   });
 }
@@ -59,9 +63,9 @@ export function useTitleHistory(tmdbId: number, mediaType: MediaType, enabled = 
     enabled,
     queryFn: async () => {
       const res = await fetch(`/api/history?tmdbId=${tmdbId}&mediaType=${mediaType}`);
-      if (res.status === 401) return { entries: [] as { seasonNumber: number | null; episodeNumber: number | null; watchedAt: string }[] };
+      if (res.status === 401) return { entries: [] as { seasonNumber: number | null; episodeNumber: number | null; playCount: number; watchedAt: string }[] };
       return res.json() as Promise<{
-        entries: { seasonNumber: number | null; episodeNumber: number | null; watchedAt: string }[];
+        entries: { seasonNumber: number | null; episodeNumber: number | null; playCount: number; watchedAt: string }[];
       }>;
     },
   });
@@ -91,6 +95,12 @@ export function useLogWatch(item: TitlePayload) {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["history"] });
+      // logging cross-writes the "completed" shelf server-side and changes
+      // every dashboard/achievement total
+      qc.invalidateQueries({ queryKey: ["library"] });
+      qc.invalidateQueries({ queryKey: ["library-status", item.mediaType, item.tmdbId] });
+      qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
+      qc.invalidateQueries({ queryKey: ["notifications"] });
     },
   });
 }
@@ -111,6 +121,7 @@ export function useUnlogWatch(item: TitlePayload) {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["history"] });
+      qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
     },
   });
 }
@@ -141,6 +152,11 @@ export function useSetRating(tmdbId: number, mediaType: MediaType) {
       });
       if (!res.ok) throw new Error("Failed to rate");
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["ratings", mediaType, tmdbId] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["ratings", mediaType, tmdbId] });
+      // review cards embed the reviewer's rating badge; stats count ratings
+      qc.invalidateQueries({ queryKey: ["reviews", mediaType, tmdbId] });
+      qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
+    },
   });
 }

@@ -74,7 +74,13 @@ function StatusGrid({ status }: { status: LibraryStatus }) {
         method: "DELETE",
       });
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["library"] }),
+    onSuccess: (_data, e) => {
+      qc.invalidateQueries({ queryKey: ["library"] });
+      // the detail page's status pills read this key — without it they keep
+      // showing the removed status as active
+      qc.invalidateQueries({ queryKey: ["library-status", e.mediaType, e.tmdbId] });
+      qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
+    },
   });
 
   if (isLoading) {

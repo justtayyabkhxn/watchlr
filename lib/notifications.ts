@@ -24,36 +24,45 @@ export async function createNotification(input: {
 // Achievement copy keyed by cumulative watch count. Kept intentionally small so
 // milestones feel earned rather than spammy.
 const WATCH_MILESTONES: Record<number, string> = {
-  1: "First watch logged — welcome to watchlr. 🎬",
+  1: "First watch logged — welcome to watchlr.",
   10: "10 watches in. You're getting the hang of this.",
   25: "25 watches. Officially a regular.",
-  50: "50 watches. That's a lot of popcorn. 🍿",
+  50: "50 watches. That's a lot of popcorn.",
   100: "100 watches. Absolute cinema.",
   250: "250 watches. Do you even sleep?",
   500: "500 watches. The credits will never roll on you.",
 };
 
 /**
- * Fire an achievement notification when the user's cumulative watch count lands
- * exactly on a milestone. Idempotent: the same milestone never notifies twice,
- * even if the count dips and returns (e.g. after un-logging then re-logging).
+ * Fire an achievement notification when the user's cumulative watch count
+ * reaches a milestone. Catch-up aware: if the count jumps past milestones
+ * (bulk import, completed-shelf cross-writes), the highest reached-but-
+ * unnotified milestone still fires — exact landings are not required.
+ * Idempotent: each milestone notifies at most once, and only the highest
+ * outstanding one fires per call so a big jump doesn't spam the bell.
  */
 export async function checkWatchMilestone(userId: string, totalCount: number) {
-  const message = WATCH_MILESTONES[totalCount];
-  if (!message) return;
+  const reached = Object.keys(WATCH_MILESTONES)
+    .map(Number)
+    .filter((m) => m <= totalCount);
+  if (reached.length === 0) return;
 
   await connectDB();
-  const already = await Notification.findOne({
+  const sent = await Notification.find({
     userId,
     type: "achievement",
-    message,
-  }).lean();
-  if (already) return;
+    message: { $in: reached.map((m) => WATCH_MILESTONES[m]) },
+  })
+    .select("message")
+    .lean();
+  const sentMessages = new Set(sent.map((s) => s.message));
+  const outstanding = reached.filter((m) => !sentMessages.has(WATCH_MILESTONES[m]));
+  if (outstanding.length === 0) return;
 
   await createNotification({
     userId,
     type: "achievement",
-    message,
+    message: WATCH_MILESTONES[Math.max(...outstanding)],
     link: "/dashboard",
   });
 }

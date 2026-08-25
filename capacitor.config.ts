@@ -10,6 +10,15 @@ const config: CapacitorConfig = {
   // detect an in-app browser and refuse to play. This makes us look like Chrome.
   overrideUserAgent:
     'Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36',
+  android: {
+    // Stream hosts behind the embed players sometimes serve segments over
+    // plain HTTP; WebView blocks that inside an HTTPS page by default, which
+    // shows up as a silent black player.
+    allowMixedContent: true,
+    // Lets chrome://inspect on a connected desktop attach to the WebView so
+    // player failures can actually be diagnosed.
+    webContentsDebuggingEnabled: true,
+  },
   server: {
     // The native WebView loads this deployed URL. Because Watchlr relies on a
     // Node backend (API routes, next-auth, MongoDB), the APK is a thin shell

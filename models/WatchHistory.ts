@@ -13,14 +13,22 @@ const WatchHistorySchema = new Schema(
     episodeNumber: { type: Number },
     // "log" = marked watched manually, "stream" = played in the built-in player
     source: { type: String, enum: ["log", "stream"], default: "log" },
+    // how many times this exact entry was watched/played — re-logging a
+    // rewatch bumps this instead of being swallowed by the unique index
+    playCount: { type: Number, default: 1 },
     watchedAt: { type: Date, default: Date.now },
   },
   { timestamps: true },
 );
 
 WatchHistorySchema.index({ userId: 1, watchedAt: -1 });
+// source is part of the key so a manual log and a stream play of the same
+// title coexist as separate rows — one no longer overwrites the other's
+// source/watchedAt (which made titles vanish from continue-watching and
+// shuffled heatmap history). connectDB() runs syncIndexes to drop the old
+// five-field unique index.
 WatchHistorySchema.index(
-  { userId: 1, tmdbId: 1, mediaType: 1, seasonNumber: 1, episodeNumber: 1 },
+  { userId: 1, tmdbId: 1, mediaType: 1, seasonNumber: 1, episodeNumber: 1, source: 1 },
   { unique: true },
 );
 
