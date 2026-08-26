@@ -47,6 +47,8 @@ const SUMMARY_PROMPTS: Record<ProseSummaryType, (m: TitleContext) => string> = {
     `What is ${describe(m)} actually about under the hood? Pick the 3 themes that matter, one tight sentence-or-three each. Wit welcome, don't ruin the ending.`,
   should_i_watch: (m) =>
     `Verdict time for ${describe(m)}: who'll love it, who should skip it, and a one-line verdict at the end. Zero spoilers, max 2 short paragraphs, be funny but honest.`,
+sarcastic_tagline: (m) =>
+    `Write ONE sarcastic one-liner summing up ${describe(m)}. Dry, deadpan, a little mean to the premise but affectionate — the kind of caption someone slaps on an instagram story. Max 12 words. No spoilers past act one, no quotes around it, no emoji, no trailing period.`,
 };
 
 const SYSTEM_PROMPT =
