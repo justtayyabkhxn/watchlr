@@ -80,6 +80,22 @@ export function ShareCardButton({ item }: { item: TitlePayload }) {
           // card just renders without the handle
         }
       }
+      // ai one-liner for the card — best-effort, the card is fine without it
+      let tagline: string | null = null;
+      try {
+        const res = await fetch("/api/ai/summary", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            tmdbId: item.tmdbId,
+            mediaType: item.mediaType,
+            summaryType: "sarcastic_tagline",
+          }),
+        });
+        if (res.ok) tagline = (await res.json()).content || null;
+      } catch {
+        // no tagline, no drama
+      }
       const blob = await renderShareCard({
         title: item.title,
         year: releaseYear(item.releaseDate),
@@ -90,6 +106,7 @@ export function ShareCardButton({ item }: { item: TitlePayload }) {
         username,
         runtime: item.runtime ?? null,
         genres: (item.genreIds ?? []).map(genreName).filter(Boolean),
+        tagline,
       });
       blobRef.current = blob;
       setPreviewUrl(URL.createObjectURL(blob));
