@@ -83,7 +83,7 @@ export function Footer() {
           <p>
             Crafted by{" "}
             <a
-              href="https://justtayyabkhan.vercel.app/"
+              href="https://justtayyabkhan.com/"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-block font-black text-ink underline decoration-accent decoration-2 underline-offset-2 transition-transform duration-150 hover:-rotate-2 hover:scale-105"
