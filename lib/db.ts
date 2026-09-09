@@ -27,7 +27,16 @@ export async function connectDB(): Promise<typeof mongoose> {
     if (!uri) {
       throw new Error("MONGODB_URI is not set. Add it to .env.local");
     }
-    cached.promise = mongoose.connect(uri, { bufferCommands: false });
+    /* Fail fast. The driver's defaults (30s server selection, no socket
+       timeout) mean an unreachable database holds a page render open long
+       enough that the user gives up first — and a request that never returns
+       can't render an error state or a retry. */
+    cached.promise = mongoose.connect(uri, {
+      bufferCommands: false,
+      serverSelectionTimeoutMS: 8_000,
+      connectTimeoutMS: 8_000,
+      socketTimeoutMS: 20_000,
+    });
   }
 
   try {

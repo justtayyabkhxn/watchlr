@@ -12,16 +12,20 @@ import {
 } from "lucide-react";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 
-/** Playful mood → TMDB genre shortcuts. Each card deep-links into discover. */
-const MOODS: { icon: LucideIcon; label: string; genre: number }[] = [
-  { icon: Laugh, label: "make me laugh", genre: 35 },
-  { icon: Ghost, label: "scare me silly", genre: 27 },
-  { icon: Heart, label: "love story pls", genre: 10749 },
-  { icon: Rocket, label: "blast off", genre: 878 },
-  { icon: Brain, label: "twist my brain", genre: 9648 },
-  { icon: Zap, label: "big loud action", genre: 28 },
-  { icon: CloudRain, label: "make me cry", genre: 18 },
-  { icon: Wand2, label: "pure magic", genre: 14 },
+/*
+ * Playful mood shortcuts. Each card opens the suggestion conversation with
+ * its `seed` already asked, rather than dumping the user in a genre filter —
+ * a mood is an opening line, and the useful part is the follow-up.
+ */
+const MOODS: { icon: LucideIcon; label: string; seed: string }[] = [
+  { icon: Laugh, label: "make me laugh", seed: "make me laugh, nothing heavy" },
+  { icon: Ghost, label: "scare me silly", seed: "scare me, but i still want to sleep tonight" },
+  { icon: Heart, label: "love story pls", seed: "a love story that isn't corny" },
+  { icon: Rocket, label: "blast off", seed: "big sci-fi, take me somewhere else" },
+  { icon: Brain, label: "twist my brain", seed: "something that messes with my head" },
+  { icon: Zap, label: "big loud action", seed: "big loud action, no thinking required" },
+  { icon: CloudRain, label: "make me cry", seed: "i want to cry about it" },
+  { icon: Wand2, label: "pure magic", seed: "something magical and warm" },
 ];
 
 const tilts = ["-rotate-2", "rotate-1", "rotate-2", "-rotate-1"];
@@ -34,10 +38,10 @@ export function MoodPicker() {
         title="Pick tonight's mood"
       />
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        {MOODS.map(({ icon: Icon, label, genre }, i) => (
+        {MOODS.map(({ icon: Icon, label, seed }, i) => (
           <Link
-            key={genre}
-            href={`/search?genre=${genre}`}
+            key={label}
+            href={`/tonight?q=${encodeURIComponent(seed)}`}
             className={`group flex flex-col items-center gap-3 rounded-3xl border-2 border-ink bg-card p-6 shadow-offset transition-all duration-150 ease-out hover:-translate-y-1 hover:rotate-0 hover:bg-accent-soft hover:shadow-offset-lg active:translate-x-[4px] active:translate-y-[4px] active:shadow-none ${tilts[i % tilts.length]}`}
           >
             <span

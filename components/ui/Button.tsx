@@ -1,5 +1,7 @@
-import { forwardRef } from "react";
-import { Loader2 } from "lucide-react";
+"use client";
+
+import { forwardRef, useCallback, useRef, useState } from "react";
+import { ThinkingDots } from "./Loader";
 
 type Variant = "primary" | "accent" | "outline" | "ghost";
 type Size = "sm" | "md" | "lg";
@@ -25,22 +27,49 @@ export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant;
   size?: Size;
+  /** Force the pending state. Async `onClick`s are detected automatically. */
   loading?: boolean;
 }
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   function Button(
-    { variant = "primary", size = "md", loading, className = "", children, disabled, ...props },
+    { variant = "primary", size = "md", loading, className = "", children, disabled, onClick, ...props },
     ref,
   ) {
+    /* If an onClick returns a promise, show the pending state for its duration
+       without every call site having to thread its own boolean. A click that
+       kicks off real work should never look like a click that did nothing. */
+    const [awaiting, setAwaiting] = useState(false);
+    const alive = useRef(true);
+
+    const handleClick = useCallback(
+      (e: React.MouseEvent<HTMLButtonElement>) => {
+        const result = onClick?.(e) as unknown;
+        if (!(result instanceof Promise)) return;
+        alive.current = true;
+        setAwaiting(true);
+        // Settle either way — an error still ends the wait; surfacing it is
+        // the caller's job.
+        result.finally(() => {
+          if (alive.current) setAwaiting(false);
+        });
+      },
+      [onClick],
+    );
+
+    const pending = loading || awaiting;
+
     return (
       <button
         ref={ref}
-        disabled={disabled || loading}
+        disabled={disabled || pending}
+        onClick={handleClick}
+        aria-busy={pending || undefined}
         className={`inline-flex items-center justify-center gap-2 rounded-full font-bold transition-all duration-150 ease-out disabled:pointer-events-none disabled:opacity-50 ${variants[variant]} ${sizes[size]} ${className}`}
         {...props}
       >
-        {loading && <Loader2 className="size-4 animate-spin" aria-hidden />}
+        {/* dots, not a spinning ring — nothing in this UI spins freely */}
+        {pending && <ThinkingDots />}
         {children}
       </button>
     );

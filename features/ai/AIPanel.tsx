@@ -13,7 +13,8 @@ import {
 } from "lucide-react";
 import type { SummaryType } from "@/models/AISummary";
 import type { MediaType } from "@/types/tmdb";
-import { Skeleton } from "@/components/ui/Skeleton";
+import { SkeletonText } from "@/components/ui/Skeleton";
+import { ThinkingBubble } from "@/components/ui/LoadingMessage";
 import { Button } from "@/components/ui/Button";
 
 const TABS: { type: SummaryType; label: string; icon: typeof Sparkles; spoilers: boolean }[] = [
@@ -99,16 +100,14 @@ export function AIPanel({
             </Button>
           </div>
         ) : isLoading ? (
-          <div className="space-y-4">
-            <p className="flex items-center gap-2 text-sm font-bold text-muted">
-              <Sparkles className="size-4 animate-pulse text-accent" aria-hidden />
-              Thinking about {title}…
-            </p>
-            <Skeleton className="h-5 w-full" />
-            <Skeleton className="h-5 w-11/12" />
-            <Skeleton className="h-5 w-4/5" />
-            <Skeleton className="h-5 w-full" />
-            <Skeleton className="h-5 w-2/3" />
+          <div className="space-y-5">
+            <ThinkingBubble
+              context={active === "internet_verdict" ? "verdict" : "ai"}
+              subject={title}
+            />
+            {/* Five lines at prose height — the panel keeps its size when the
+                real answer lands, so the page never jumps under the reader. */}
+            <SkeletonText lines={5} lineClassName="h-5" />
           </div>
         ) : isError ? (
           <div className="py-2">

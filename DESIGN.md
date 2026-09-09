@@ -139,6 +139,87 @@ Single hue only (accent), sequential amber→brown ramp for the heatmap
 (`#ffdfa8 → #f5b97e → #f59e52 → #c96f28`, empty = `#f2ede3`). Direct value
 labels + native tooltips on every mark. No chart libraries — divs/SVG.
 
+## loading & waiting
+
+Waits are part of the product, not a gap in it. Never ship a bare spinner and
+never ship a grey block.
+
+**Nothing spins freely.** A smooth 360° throbber is the one thing here that
+would look store-bought. `components/ui/Loader.tsx` has the three sanctioned
+loaders:
+
+| loader | motion | use |
+|---|---|---|
+| `StickerLoader` | rocks ±9deg (`animate-tumble`) | the default; a Lucide icon in a sticker tile |
+| `ReelLoader` | steps in quarter turns (`animate-reel`) | waits on media itself |
+| `ThinkingDots` | three `currentColor` dots bobbing in turn | inline, in buttons and sentences |
+| `CrawlBar` | indeterminate sweep (`animate-crawl`) | waits with no honest percentage |
+
+`Button`'s `loading` prop already renders `ThinkingDots` — never hand-roll one.
+
+**Skeletons are warm, not grey.** The `skeleton` utility paints `border` tan
+with an amber sheen sweeping across it; `sheen` adds the same sweep to an
+element that already has its own background (poster tiles, avatars). Both
+hide the sheen under `prefers-reduced-motion` rather than freezing it
+mid-sweep. Primitives live in `components/ui/Skeleton.tsx`: `Skeleton`,
+`SkeletonText`, `PosterSkeleton`, `PosterGridSkeleton`, `CardSkeleton`,
+`StatTileSkeleton`, `RowSkeleton`, `ChipSkeleton`, `RailSkeleton`,
+`PageSkeleton`.
+
+Two rules for using them:
+
+1. **Mirror the real shape.** A skeleton must occupy the same box the content
+   will — same poster width, same card chrome (`border-2 border-ink` +
+   `shadow-offset`), same heading scale. If the page reflows when data lands,
+   the skeleton was wrong.
+2. **Stagger.** Pass `index` so the sheen delays step by 90ms and a grid reads
+   as one wave. `stagger(i)` is the only place delays are computed.
+
+**Every wait says what it's doing.** `components/ui/LoadingMessage.tsx` holds
+the loading scripts, keyed by context (`ai`, `verdict`, `roast`, `picks`,
+`triage`, `vibe`, `chat`, `search`, `library`, `dashboard`, `detail`,
+`stream`, `profile`, `generic`). A line rotates every 2.6s so a fast response
+shows one message and a slow one never sits still; reduced motion locks to the
+first line. Use `ThinkingBubble` (the wobble speech bubble) wherever the model
+is composing prose the user is about to read.
+
+Copy rules for new lines: lowercase, no emoji, under ~40 chars, and each line
+must be **plausibly true of that moment**. "counting the rewatches" is fine on
+the roast; "almost done" is a lie and stays out.
+
+**Every click must visibly do something.** `components/layout/RouteProgress.tsx`
+(mounted in the root layout) stages navigation feedback in two steps:
+
+| attribute on `<html>` | when | effect |
+|---|---|---|
+| `data-navigating` | same frame as the click | 3px accent crawl bar across the top |
+| `data-navigating-slow` | ~260ms later | page softens to 55%, a small note appears |
+
+A navigation that resolves inside 260ms therefore shows only the bar. This is
+deliberately quiet — no overlay, no backdrop, nothing blocked. The bar answers
+"did my click land?", the note (a sticker chip under the navbar running a
+`LoadingMessage`) says what's happening, and the destination's own
+`loading.tsx` skeleton shows what's coming. The softened page is what gives
+the note its contrast.
+
+**Both attributes are set by direct DOM writes, never React state — this is
+load-bearing.** Next runs router navigations inside `startTransition`, so a
+`setState` in the same tick is folded into that transition, deprioritised, and
+does not paint until the navigation has already finished. Measured on this app,
+a state-driven bar never appeared at all. The indicator markup is always
+mounted and hidden by CSS, so revealing it costs a class match rather than a
+render. If you add navigation feedback, follow the same pattern.
+
+Links that shouldn't feel like a page change opt out with
+`data-no-nav-progress`. `Button` covers the non-navigation half: an `onClick`
+that returns a promise automatically shows `ThinkingDots` and disables for its
+duration, so no mutation ever looks like a click that did nothing.
+
+Every route that can take a beat also has a `loading.tsx` built from
+`PageSkeleton`.
+
+---
+
 ## copy voice
 
 Playful, a little cheeky, always lowercase: "made for people who watch too
@@ -157,5 +238,6 @@ Never corporate ("Explore our catalog"), never shouty.
 - [ ] display headings: `text-offset` (or `-accent` at hero scale)?
 - [ ] something rotated? something that wiggles/floats/springs on hover?
 - [ ] empty, loading (skeleton), and error states designed?
+- [ ] loading state uses a `LoadingMessage` context, staggered skeletons, and no free-spinning throbber?
 - [ ] images reserve aspect ratio (no layout shift)?
 - [ ] works with `prefers-reduced-motion`?

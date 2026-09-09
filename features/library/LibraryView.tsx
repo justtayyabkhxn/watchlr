@@ -17,6 +17,7 @@ import { tmdbImage } from "@/lib/media";
 import { PosterCard } from "@/components/cards/PosterCard";
 import { PosterSkeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { QueryError } from "@/components/ui/QueryError";
 import { WatchlistTriage } from "./WatchlistTriage";
 import { ContinueWatching } from "./ContinueWatching";
 import { ShareListButton } from "./ShareListButton";
@@ -59,7 +60,7 @@ function toMediaItem(e: LibraryEntry): MediaItem {
 
 function StatusGrid({ status }: { status: LibraryStatus }) {
   const qc = useQueryClient();
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["library", status],
     queryFn: async (): Promise<{ entries: LibraryEntry[] }> => {
       const res = await fetch(`/api/library?status=${status}`);
@@ -91,6 +92,10 @@ function StatusGrid({ status }: { status: LibraryStatus }) {
         ))}
       </div>
     );
+  }
+
+  if (isError) {
+    return <QueryError what="your shelf" error={error} onRetry={refetch} />;
   }
 
   const entries = data?.entries ?? [];
@@ -126,7 +131,7 @@ function StatusGrid({ status }: { status: LibraryStatus }) {
 
 function CollectionsPanel() {
   const qc = useQueryClient();
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["collections"],
     queryFn: async () => {
       const res = await fetch("/api/collections");
@@ -162,6 +167,10 @@ function CollectionsPanel() {
 
   if (isLoading) {
     return <div className="space-y-4">{Array.from({ length: 2 }).map((_, i) => <PosterSkeleton key={i} />)}</div>;
+  }
+
+  if (isError) {
+    return <QueryError what="your lists" error={error} onRetry={refetch} />;
   }
 
   const collections = data?.collections ?? [];

@@ -10,6 +10,7 @@ import { Lock, MonitorPlay, Play, RectangleHorizontal, X } from "lucide-react";
 import type { TmdbSeasonDetails, TmdbSeasonSummary } from "@/types/tmdb";
 import { tmdbImage } from "@/lib/media";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { LoadingMessage } from "@/components/ui/LoadingMessage";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { useLogWatch, type TitlePayload } from "@/features/library/hooks";
 
@@ -381,10 +382,13 @@ function EpisodeGrid({
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-        {Array.from({ length: Math.min(episodeCount, 8) }).map((_, i) => (
-          <Skeleton key={i} className="h-11 w-full" />
-        ))}
+      <div>
+        <LoadingMessage context="detail" className="mb-3" />
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+          {Array.from({ length: Math.min(episodeCount, 8) }).map((_, i) => (
+            <Skeleton key={i} index={i} className="h-11 w-full" />
+          ))}
+        </div>
       </div>
     );
   }

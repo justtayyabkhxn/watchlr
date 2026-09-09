@@ -1,5 +1,6 @@
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
+import { TonightFab } from "@/components/layout/TonightFab";
 
 export default function AppLayout({
   children,
@@ -9,6 +10,7 @@ export default function AppLayout({
       <Navbar />
       <main className="flex-1">{children}</main>
       <Footer />
+      <TonightFab />
     </div>
   );
 }

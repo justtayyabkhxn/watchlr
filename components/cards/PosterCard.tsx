@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { motion, useReducedMotion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
-import { Bookmark, Check, Star } from "lucide-react";
+import { Bookmark, Check, Film, Star } from "lucide-react";
 import type { MediaItem } from "@/types/tmdb";
 import { formatRating, formatRuntime, genreName, releaseYear, tmdbImage } from "@/lib/media";
 import { useLogWatch, useSetStatus, type TitlePayload } from "@/features/library/hooks";
@@ -155,7 +155,11 @@ export function PosterCard({
             </div>
           )}
           {!loaded && poster && (
-            <div aria-hidden className="absolute inset-0 animate-pulse bg-border" />
+            /* Same warm sheen as every other placeholder, plus the film mark,
+               so a rail mid-load looks like the app and not like a gap. */
+            <div aria-hidden className="skeleton absolute inset-0 grid place-items-center">
+              <Film className="size-7 text-muted/30" strokeWidth={2.25} />
+            </div>
           )}
           <QuickActions item={item} />
           {metaLabel && (

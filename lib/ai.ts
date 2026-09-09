@@ -2,7 +2,7 @@ import "server-only";
 import Groq from "groq-sdk";
 import type { SummaryType } from "@/models/AISummary";
 
-export const AI_MODEL = "openai/gpt-oss-120b";
+export const AI_MODEL = "qwen/qwen3.8-27b";
 
 /* Bump when prompts change — stored in the cache's `model` field so stale
    summaries in Mongo regenerate in the new voice instead of being served. */
@@ -47,6 +47,8 @@ const SUMMARY_PROMPTS: Record<ProseSummaryType, (m: TitleContext) => string> = {
     `What is ${describe(m)} actually about under the hood? Pick the 3 themes that matter, one tight sentence-or-three each. Wit welcome, don't ruin the ending.`,
   should_i_watch: (m) =>
     `Verdict time for ${describe(m)}: who'll love it, who should skip it, and a one-line verdict at the end. Zero spoilers, max 2 short paragraphs, be funny but honest.`,
+  sarcastic_tagline: (m) =>
+    `Write ONE sarcastic one-liner summing up ${describe(m)}. Dry, deadpan, a little mean to the premise but affectionate — the kind of caption someone slaps on an instagram story. Max 12 words. No spoilers past act one, no quotes around it, no emoji, no trailing period.`,
 };
 
 const SYSTEM_PROMPT =
@@ -408,4 +410,213 @@ export function streamTitleChat(media: TitleContext, turns: ChatTurn[]) {
       ...turns.slice(-12),
     ],
   });
+}
+
+/* ---------- the suggestion conversation ---------- */
+
+export interface DiscoverShelfEntry {
+  index: number;
+  title: string;
+  year: string;
+  mediaType: "movie" | "tv";
+  genres: string[];
+}
+
+export interface DiscoverContext {
+  taste: TasteProfile;
+  /** The user's want-to-watch pile, numbered — suggested by index, never by name. */
+  shelf: DiscoverShelfEntry[];
+  /** The visible, user-editable chips. Deleting one here removes it from the prompt. */
+  constraints: string[];
+  /** Everything this thread has already put on screen — stops turn six repeating turn two. */
+  alreadySuggested: string[];
+  /** Titles the user actively swiped away, which is stronger signal than never seeing them. */
+  dismissed: string[];
+}
+
+/**
+ * The delimiter that splits a turn in two. Everything before it is prose we
+ * stream to the user a token at a time; everything after is the JSON payload
+ * we resolve against TMDB before anything reaches the screen.
+ *
+ * One call rather than two, because a separate JSON pass writes picks the
+ * prose has never seen — "here are three short ones" over a 160-minute film.
+ */
+export const DISCOVER_DELIMITER = "<<<PICKS>>>";
+
+export interface DiscoverPayload {
+  shelf: { index: number; reason: string }[];
+  fresh: FreshPick[];
+  constraints: string[];
+  chips: string[];
+}
+
+/** Streaming suggestion turn: prose, then a JSON block behind the delimiter. */
+export function streamDiscoverTurn(ctx: DiscoverContext, turns: ChatTurn[]) {
+  const client = getClient();
+  const shelfList = ctx.shelf
+    .map(
+      (e) =>
+        `${e.index}. ${e.title} (${e.year}, ${e.mediaType}${e.genres.length ? `, ${e.genres.join("/")}` : ""})`,
+    )
+    .join("\n");
+
+  return client.chat.completions.create({
+    model: AI_MODEL,
+    max_tokens: 1100,
+    temperature: 0.8,
+    stream: true,
+    messages: [
+      {
+        role: "system",
+        content: `You are Watchlr's suggestion desk. The user talks to you like a friend with good taste, and you hand back real things to watch — narrowing with every turn instead of starting over.
+
+WHO YOU'RE TALKING TO
+- recently watched: ${ctx.taste.watched.slice(0, 25).join("; ") || "nothing yet"}
+- loved (favorites + rated 8-10): ${ctx.taste.loved.slice(0, 15).join("; ") || "unknown"}
+- disliked or dropped: ${ctx.taste.avoided.slice(0, 10).join("; ") || "unknown"}
+- favorite genres: ${ctx.taste.genres.join(", ") || "unknown"}
+
+THEIR WANT-TO-WATCH PILE (refer to these by number only):
+${shelfList || "(empty)"}
+
+LOCKED CONSTRAINTS — the user can see these as chips and delete them at will. Honour every one:
+${ctx.constraints.length ? ctx.constraints.map((c) => `- ${c}`) : "- (none yet)"}
+
+ALREADY SUGGESTED THIS CONVERSATION — never offer any of these again:
+${ctx.alreadySuggested.slice(0, 60).join("; ") || "(nothing yet)"}
+
+TURNED DOWN — they saw these and said no. Read the pattern, don't just avoid the titles:
+${ctx.dismissed.slice(0, 20).join("; ") || "(nothing yet)"}
+
+HOW YOU ANSWER
+Always in two parts, in this exact order.
+
+1. Prose. Two sentences, maximum 35 words. Say what you're going for and why, in the house voice — sharp, funny, no filler, no markdown, no lists, no preamble like "Sure!" or "Here are". If they asked a question rather than for suggestions, answer it in the same two sentences.
+
+2. The line ${DISCOVER_DELIMITER} on its own, then ONE JSON object and nothing else:
+{"shelf":[{"index":3,"reason":"..."}],"fresh":[{"title":"...","year":"2014","mediaType":"movie","reason":"..."}],"constraints":["under 100 min"],"chips":["shorter","weirder"]}
+
+- "shelf": up to 2 things already on their pile that fit. Their own list comes first — something they already meant to watch beats a stranger. Empty array if the pile is empty or nothing fits. Reference by the numbers above and never invent one.
+- "fresh": 3 to 5 real titles NOT on the pile and NOT already suggested. Only titles you are certain exist; anything you invent is dropped before it renders and the user gets a thinner answer.
+- Every "reason" is one line, max 12 words, tied to what they actually asked for. No spoilers.
+- "constraints": the full updated list of hard limits in play — runtime, genre, era, language, mood, streaming service. Carry the locked ones forward verbatim, add whatever they just said, drop anything they've explicitly lifted. Each is 4 words or fewer, lowercase. Never re-add one that's missing from the locked list unless they say it again.
+- "chips": exactly 4 two-or-three-word follow-ups that would sharpen the search from here — "shorter", "less bleak", "nothing pre-2000". They are next steps, never restatements of what's already locked.`,
+      },
+      ...turns.slice(-10),
+      /* Replayed assistant turns are prose only — the JSON tail never comes
+         back from the client — so by turn three the model's own examples have
+         taught it that a reply is a sentence and nothing else. This reminder
+         sits last, where recency wins. */
+      {
+        role: "system",
+        content: `Answer in the two-part format now: at most 35 words of prose, then the line ${DISCOVER_DELIMITER} on its own, then the JSON object. The JSON half is mandatory — without it the user sees no posters at all.`,
+      },
+    ],
+  });
+}
+
+/**
+ * Recovery for a turn whose JSON tail never arrived. Prose has already
+ * streamed by the time we know, so this asks for the picks alone, in JSON
+ * mode where the format is guaranteed rather than requested.
+ */
+export async function generateDiscoverPicks(
+  ctx: DiscoverContext,
+  turns: ChatTurn[],
+  prose: string,
+): Promise<DiscoverPayload> {
+  const client = getClient();
+  const shelfList = ctx.shelf
+    .map((e) => `${e.index}. ${e.title} (${e.year}, ${e.mediaType})`)
+    .join("\n");
+  const asked = [...turns].reverse().find((t) => t.role === "user")?.content ?? "";
+
+  const response = await client.chat.completions.create({
+    model: AI_MODEL,
+    max_tokens: 700,
+    response_format: { type: "json_object" },
+    messages: [
+      {
+        role: "system",
+        content:
+          "You are Watchlr's suggestion desk. You only name real, verifiable movies and TV shows. Respond with strict JSON only.",
+      },
+      {
+        role: "user",
+        content: `The user asked: "${asked}"
+
+You already replied: "${prose}"
+
+Now produce the picks that reply promised.
+
+Their taste — loved: ${ctx.taste.loved.slice(0, 12).join("; ") || "unknown"}; avoided: ${ctx.taste.avoided.slice(0, 8).join("; ") || "unknown"}.
+Constraints to honour: ${ctx.constraints.join("; ") || "(none)"}.
+Never repeat any of these: ${ctx.alreadySuggested.slice(0, 40).join("; ") || "(nothing yet)"}.
+They turned these down: ${ctx.dismissed.slice(0, 15).join("; ") || "(nothing)"}.
+
+Their want-to-watch pile:
+${shelfList || "(empty)"}
+
+Return up to 2 from the pile by number, 3 to 5 real titles that are not on it, the full list of constraints in play (each 4 words or fewer, lowercase), and exactly 4 short follow-up suggestions. Every reason is one line, max 12 words.
+
+Return JSON exactly like: {"shelf":[{"index":3,"reason":"..."}],"fresh":[{"title":"...","year":"2014","mediaType":"movie","reason":"..."}],"constraints":["under 100 min"],"chips":["shorter","weirder","less bleak","nothing pre-2000"]}`,
+      },
+    ],
+  });
+
+  return parseDiscoverPayload(response.choices[0]?.message?.content ?? "{}");
+}
+
+/** Parse the JSON tail of a discover turn. Never throws — a bad tail is an empty turn. */
+export function parseDiscoverPayload(tail: string): DiscoverPayload {
+  const empty: DiscoverPayload = { shelf: [], fresh: [], constraints: [], chips: [] };
+  const start = tail.indexOf("{");
+  const end = tail.lastIndexOf("}");
+  if (start === -1 || end <= start) return empty;
+
+  let parsed: Record<string, unknown>;
+  try {
+    parsed = JSON.parse(tail.slice(start, end + 1)) as Record<string, unknown>;
+  } catch {
+    return empty;
+  }
+
+  const strings = (v: unknown, cap: number, len: number) =>
+    (Array.isArray(v) ? v : [])
+      .filter((s): s is string => typeof s === "string" && s.trim().length > 0)
+      .map((s) => s.trim().slice(0, len))
+      .slice(0, cap);
+
+  const shelf = (Array.isArray(parsed.shelf) ? parsed.shelf : [])
+    .filter(
+      (p): p is { index: number; reason: string } =>
+        Number.isInteger((p as { index?: unknown })?.index) &&
+        typeof (p as { reason?: unknown })?.reason === "string",
+    )
+    .map((p) => ({ index: p.index, reason: p.reason.slice(0, 120) }))
+    .slice(0, 2);
+
+  const fresh = (Array.isArray(parsed.fresh) ? parsed.fresh : [])
+    .filter(
+      (p): p is FreshPick =>
+        typeof (p as { title?: unknown })?.title === "string" &&
+        (p as { title: string }).title.length > 0 &&
+        ((p as { mediaType?: unknown })?.mediaType === "movie" ||
+          (p as { mediaType?: unknown })?.mediaType === "tv"),
+    )
+    .map((p) => ({
+      title: p.title,
+      year: String(p.year ?? ""),
+      mediaType: p.mediaType,
+      reason: typeof p.reason === "string" ? p.reason.slice(0, 120) : "",
+    }))
+    .slice(0, 5);
+
+  return {
+    shelf,
+    fresh,
+    constraints: strings(parsed.constraints, 8, 40),
+    chips: strings(parsed.chips, 4, 30),
+  };
 }

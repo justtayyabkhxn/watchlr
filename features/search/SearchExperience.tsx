@@ -8,7 +8,8 @@ import { Search, SlidersHorizontal, Sparkles, Wand2, X, Flame, Clock3 } from "lu
 import type { MediaItem, MediaType } from "@/types/tmdb";
 import { GENRES, genreIdForType, genreIdMatches } from "@/lib/media";
 import { PosterCard } from "@/components/cards/PosterCard";
-import { PosterSkeleton } from "@/components/ui/Skeleton";
+import { PosterGridSkeleton } from "@/components/ui/Skeleton";
+import { LoadingMessage } from "@/components/ui/LoadingMessage";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useDebounce } from "@/hooks/use-debounce";
 import { Highlighter } from "@/components/ui/highlighter";
@@ -660,15 +661,8 @@ export function SearchExperience() {
         <div className="mt-10">
           {vibe.isFetching ? (
             <div>
-              <p className="mb-6 flex items-center gap-2 text-sm font-bold text-muted">
-                <Sparkles className="size-4 animate-pulse text-accent" aria-hidden />
-                Reading your mind…
-              </p>
-              <div className="grid grid-cols-2 gap-x-3 gap-y-6 sm:grid-cols-3 sm:gap-x-5 sm:gap-y-8 md:grid-cols-4 lg:grid-cols-5">
-                {Array.from({ length: 10 }).map((_, i) => (
-                  <PosterSkeleton key={i} />
-                ))}
-              </div>
+              <LoadingMessage context="vibe" className="mb-6" />
+              <PosterGridSkeleton count={10} />
             </div>
           ) : vibe.isError ? (
             <EmptyState
@@ -711,10 +705,9 @@ export function SearchExperience() {
       {!vibeMode && (
       <div className="mt-10">
         {isLoading ? (
-          <div className="grid grid-cols-2 gap-x-3 gap-y-6 sm:grid-cols-3 sm:gap-x-5 sm:gap-y-8 md:grid-cols-4 lg:grid-cols-5">
-            {Array.from({ length: 10 }).map((_, i) => (
-              <PosterSkeleton key={i} />
-            ))}
+          <div>
+            <LoadingMessage context="search" className="mb-6" />
+            <PosterGridSkeleton count={10} />
           </div>
         ) : isError ? (
           <EmptyState
@@ -742,10 +735,8 @@ export function SearchExperience() {
             </div>
             <div ref={sentinelRef} aria-hidden className="h-1" />
             {isFetchingNextPage && (
-              <div className="mt-8 grid grid-cols-2 gap-x-3 gap-y-6 sm:grid-cols-3 sm:gap-x-5 sm:gap-y-8 md:grid-cols-4 lg:grid-cols-5">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <PosterSkeleton key={i} />
-                ))}
+              <div className="mt-8">
+                <PosterGridSkeleton count={5} />
               </div>
             )}
           </>

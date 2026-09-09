@@ -6,7 +6,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { PlayCircle, X } from "lucide-react";
 import { tmdbImage } from "@/lib/media";
 import { PosterSkeleton } from "@/components/ui/Skeleton";
+import { LoadingMessage } from "@/components/ui/LoadingMessage";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { QueryError } from "@/components/ui/QueryError";
 
 interface HistoryEntry {
   tmdbId: number;
@@ -45,7 +47,7 @@ function timeAgo(iso: string): string {
 
 export function ContinueWatching() {
   const qc = useQueryClient();
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["history", "continue-watching"],
     queryFn: async (): Promise<{ entries: Omit<HistoryEntry, "fromStream">[] }> => {
       const res = await fetch("/api/history?source=stream");
@@ -56,7 +58,12 @@ export function ContinueWatching() {
 
   // Titles manually marked "watching" belong here too — same concept the
   // home rail shows, so the two surfaces agree.
-  const { data: watching, isLoading: watchingLoading } = useQuery({
+  const {
+    data: watching,
+    isLoading: watchingLoading,
+    isError: watchingError,
+    refetch: refetchWatching,
+  } = useQuery({
     queryKey: ["library", "watching"],
     queryFn: async (): Promise<{ entries: WatchingEntry[] }> => {
       const res = await fetch("/api/library?status=watching");
@@ -91,11 +98,23 @@ export function ContinueWatching() {
 
   if (isLoading || watchingLoading) {
     return (
-      <div className="grid grid-cols-2 gap-x-5 gap-y-8 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <PosterSkeleton key={i} />
-        ))}
+      <div>
+        <LoadingMessage context="library" className="mb-5" />
+        <div className="grid grid-cols-2 gap-x-5 gap-y-8 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <PosterSkeleton key={i} index={i} className="w-full" />
+          ))}
+        </div>
       </div>
+    );
+  }
+
+  if (isError || watchingError) {
+    return (
+      <QueryError
+        what="where you left off"
+        onRetry={() => Promise.all([refetch(), refetchWatching()])}
+      />
     );
   }
 

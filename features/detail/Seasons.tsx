@@ -7,7 +7,8 @@ import { useQuery } from "@tanstack/react-query";
 import { Check, ChevronDown } from "lucide-react";
 import type { TmdbSeasonDetails, TmdbSeasonSummary } from "@/types/tmdb";
 import { formatRuntime, tmdbImage } from "@/lib/media";
-import { Skeleton } from "@/components/ui/Skeleton";
+import { RowSkeleton } from "@/components/ui/Skeleton";
+import { QueryError } from "@/components/ui/QueryError";
 import {
   useLibraryStatus,
   useLogWatch,
@@ -33,7 +34,7 @@ function EpisodeList({
   const logWatch = useLogWatch(item);
   const unlogWatch = useUnlogWatch(item);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["season", tvId, seasonNumber],
     queryFn: async (): Promise<TmdbSeasonDetails> => {
       const res = await fetch(`/api/tv/${tvId}/season/${seasonNumber}`);
@@ -46,8 +47,16 @@ function EpisodeList({
     return (
       <div className="space-y-3 p-5">
         {Array.from({ length: 4 }).map((_, i) => (
-          <Skeleton key={i} className="h-16 w-full" />
+          <RowSkeleton key={i} index={i} />
         ))}
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="p-5">
+        <QueryError what="this season" error={error} onRetry={refetch} compact />
       </div>
     );
   }

@@ -2,7 +2,8 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Flame, RefreshCw, Sparkles } from "lucide-react";
-import { Skeleton } from "@/components/ui/Skeleton";
+import { SkeletonText } from "@/components/ui/Skeleton";
+import { ThinkingBubble } from "@/components/ui/LoadingMessage";
 import { Button } from "@/components/ui/Button";
 
 interface TasteResponse {
@@ -65,15 +66,9 @@ export function TasteRoast() {
 
       <div className="mt-5">
         {isLoading || reroast.isPending ? (
-          <div className="space-y-3">
-            <p className="flex items-center gap-2 text-sm font-bold text-muted">
-              <Sparkles className="size-4 animate-pulse text-accent" aria-hidden />
-              Judging you…
-            </p>
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-11/12" />
-            <Skeleton className="h-4 w-4/5" />
-            <Skeleton className="h-4 w-2/3" />
+          <div className="space-y-4">
+            <ThinkingBubble context="roast" />
+            <SkeletonText lines={4} className="max-w-3xl" />
           </div>
         ) : isError ? (
           <div>

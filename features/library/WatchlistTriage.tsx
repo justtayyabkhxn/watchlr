@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { Send, Sparkles, Wand2, X } from "lucide-react";
+import { Send, Wand2, X } from "lucide-react";
 import type { MediaItem } from "@/types/tmdb";
 import { PosterCard } from "@/components/cards/PosterCard";
 import { PosterSkeleton } from "@/components/ui/Skeleton";
+import { LoadingMessage } from "@/components/ui/LoadingMessage";
 
 interface TriagePick {
   tmdbId: number;
@@ -142,13 +143,10 @@ export function WatchlistTriage() {
 
       {triage.isPending ? (
         <div className="mt-6">
-          <p className="mb-4 flex items-center gap-2 text-sm font-bold text-muted">
-            <Sparkles className="size-4 animate-pulse text-accent" aria-hidden />
-            Digging through your pile…
-          </p>
+          <LoadingMessage context="triage" className="mb-4" />
           <div className="grid grid-cols-3 gap-4 sm:max-w-xl">
             {Array.from({ length: 3 }).map((_, i) => (
-              <PosterSkeleton key={i} />
+              <PosterSkeleton key={i} index={i} className="w-full" />
             ))}
           </div>
         </div>

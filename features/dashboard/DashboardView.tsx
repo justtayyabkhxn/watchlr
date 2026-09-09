@@ -5,7 +5,8 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { BarChart3 } from "lucide-react";
 import { formatHours, tmdbImage } from "@/lib/media";
-import { Skeleton } from "@/components/ui/Skeleton";
+import { CardSkeleton, Skeleton, SkeletonText, StatTileSkeleton } from "@/components/ui/Skeleton";
+import { LoadingMessage } from "@/components/ui/LoadingMessage";
 import { Highlighter } from "@/components/ui/highlighter";
 import { StickerField, type StickerSpec } from "@/features/decor/Doodads";
 
@@ -14,6 +15,7 @@ const PAGE_STICKERS: StickerSpec[] = [
   { icon: "flame", className: "right-[12%] top-44 hidden xl:block", tilt: -10, delay: "1.4s", size: "sm" },
 ];
 import { EmptyState } from "@/components/ui/EmptyState";
+import { QueryError } from "@/components/ui/QueryError";
 import { TasteRoast } from "./TasteRoast";
 import {
   CalendarHeatmap,
@@ -72,7 +74,7 @@ function ChartCard({ title, sub, children }: { title: string; sub?: string; chil
 }
 
 export function DashboardView() {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["dashboard-stats"],
     queryFn: async (): Promise<Stats> => {
       const res = await fetch("/api/dashboard/stats");
@@ -94,15 +96,24 @@ export function DashboardView() {
         </h1>
       </header>
 
-      {isLoading || !data ? (
+      {isError ? (
+        <QueryError what="your stats" error={error} onRetry={refetch} />
+      ) : isLoading || !data ? (
         <div className="space-y-6">
+          <LoadingMessage context="dashboard" />
           <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
             {Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton key={i} className="h-32 rounded-3xl" />
+              <StatTileSkeleton key={i} index={i} />
             ))}
           </div>
-          <Skeleton className="h-64 w-full rounded-3xl" />
-          <Skeleton className="h-64 w-full rounded-3xl" />
+          {/* chart cards keep their real chrome, so only the plot area fades in */}
+          {[0, 1].map((i) => (
+            <CardSkeleton key={i} index={i + 4} className="h-64">
+              <Skeleton index={i} className="h-3 w-24" />
+              <Skeleton index={i + 1} className="mt-3 h-6 w-48" />
+              <SkeletonText lines={3} className="mt-6" lineClassName="h-8" />
+            </CardSkeleton>
+          ))}
         </div>
       ) : data.totals.watches === 0 ? (
         <EmptyState

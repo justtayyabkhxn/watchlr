@@ -16,7 +16,7 @@ import { WatchHistory } from "@/models/WatchHistory";
 import { Watchlist } from "@/models/Watchlist";
 import { Rail } from "@/components/cards/Rail";
 import { PosterCard } from "@/components/cards/PosterCard";
-import { PosterSkeleton, Skeleton } from "@/components/ui/Skeleton";
+export { RailSkeleton } from "@/components/ui/Skeleton";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { EmptyState } from "@/components/ui/EmptyState";
 
@@ -270,18 +270,4 @@ export async function ForYouRail() {
   );
 }
 
-export function RailSkeleton() {
-  return (
-    <section className="mx-auto max-w-6xl px-6">
-      <div className="mb-6">
-        <Skeleton className="h-3 w-32" />
-        <Skeleton className="mt-3 h-9 w-64" />
-      </div>
-      <div className="no-scrollbar -mx-6 flex gap-5 overflow-hidden px-6">
-        {Array.from({ length: 7 }).map((_, i) => (
-          <PosterSkeleton key={i} />
-        ))}
-      </div>
-    </section>
-  );
-}
+

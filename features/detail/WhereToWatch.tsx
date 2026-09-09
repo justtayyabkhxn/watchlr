@@ -6,6 +6,7 @@ import type { MediaType, TmdbWatchProviders } from "@/types/tmdb";
 import type { StreamingOption } from "@/types/streaming";
 import { Providers } from "@/features/detail/Providers";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { LoadingMessage } from "@/components/ui/LoadingMessage";
 
 const GROUPS: [StreamingOption["type"][], string][] = [
   [["subscription", "free"], "Stream"],
@@ -92,9 +93,10 @@ export function WhereToWatch({
   if (isLoading) {
     return (
       <div className="space-y-2">
-        <Skeleton className="h-12 w-full rounded-2xl" />
-        <Skeleton className="h-12 w-full rounded-2xl" />
-        <Skeleton className="h-12 w-full rounded-2xl" />
+        <LoadingMessage context="stream" className="mb-1" />
+        <Skeleton index={0} className="h-12 w-full rounded-2xl" />
+        <Skeleton index={1} className="h-12 w-full rounded-2xl" />
+        <Skeleton index={2} className="h-12 w-full rounded-2xl" />
       </div>
     );
   }

@@ -55,12 +55,26 @@ async function tmdb<T>(
   const attempts = [...HOSTS, ...HOSTS];
   let lastError: unknown;
 
+  /*
+   * A whole-call budget, not just a per-attempt timeout. Four attempts at ten
+   * seconds each plus backoff could hold a page render for forty seconds —
+   * long past the point the user has decided the app is broken and clicked
+   * something else. Better to fail inside ten seconds and render the error
+   * boundary, which at least offers a retry.
+   */
+  const deadline = Date.now() + 10_000;
+
   for (let i = 0; i < attempts.length; i++) {
+    const remaining = deadline - Date.now();
+    // Not enough time left for an attempt to plausibly succeed — stop here
+    // rather than firing one that's guaranteed to be cut off.
+    if (remaining < 700) break;
+
     const url = `${attempts[i]}${path}?${query}`;
     try {
       const res = await fetch(url, {
         next: { revalidate },
-        signal: AbortSignal.timeout(10_000),
+        signal: AbortSignal.timeout(Math.min(6_000, remaining)),
       });
       if (res.ok) return res.json() as Promise<T>;
       // 4xx won't improve with a retry; 5xx might.
@@ -72,7 +86,9 @@ async function tmdb<T>(
       if (err instanceof TmdbError && err.status < 500) throw err;
       lastError = err;
     }
-    if (i < attempts.length - 1) await sleep(200 * (i + 1));
+    if (i < attempts.length - 1) {
+      await sleep(Math.min(200 * (i + 1), Math.max(0, deadline - Date.now())));
+    }
   }
 
   throw new TmdbError(

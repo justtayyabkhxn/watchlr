@@ -1,8 +1,9 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { MessageCircle, Send, Sparkles } from "lucide-react";
+import { MessageCircle, Send } from "lucide-react";
 import type { MediaType } from "@/types/tmdb";
+import { LoadingMessage } from "@/components/ui/LoadingMessage";
 
 interface Turn {
   role: "user" | "assistant";
@@ -113,10 +114,7 @@ export function TitleChat({
             }`}
           >
             {turn.content || (
-              <span className="inline-flex items-center gap-1.5 text-muted">
-                <Sparkles className="size-3.5 animate-pulse text-accent" aria-hidden />
-                thinking…
-              </span>
+              <LoadingMessage context="chat" icon={null} className="text-xs" />
             )}
           </div>
         ))}

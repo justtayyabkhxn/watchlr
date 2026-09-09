@@ -19,6 +19,8 @@ export type ShareCardInput = {
   runtime?: number | null;
   /** genre names for the stats sticker (first two are used) */
   genres?: string[];
+  /** ai-written sarcastic one-liner, drawn under the date/time stamp */
+  tagline?: string | null;
 };
 
 const W = 1080;
@@ -352,6 +354,17 @@ export async function renderShareCard(input: ShareCardInput): Promise<Blob> {
   ctx.font = `700 28px ${family}`;
   ctx.fillStyle = MUTED;
   ctx.fillText(stamp, W / 2, hostY + 58);
+
+  // ---- sarcastic one-liner just below the stamp --------------------------
+  const tagline = input.tagline?.trim().toLowerCase();
+  if (tagline) {
+    ctx.font = `700 34px ${family}`;
+    ctx.fillStyle = INK;
+    const tagLines = wrapTitle(ctx, `"${tagline}"`, W - 200, 2);
+    tagLines.forEach((line, i) => {
+      ctx.fillText(line, W / 2, hostY + 128 + i * 46);
+    });
+  }
 
   return new Promise<Blob>((resolve, reject) => {
     canvas.toBlob(

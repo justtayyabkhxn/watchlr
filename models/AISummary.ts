@@ -6,6 +6,7 @@ export const SUMMARY_TYPES = [
   "ending_explained",
   "themes",
   "should_i_watch",
+  "sarcastic_tagline", // one-liner for the shareable story card
   "internet_verdict", // generated from real TMDB reviews, not the synopsis
 ] as const;
 

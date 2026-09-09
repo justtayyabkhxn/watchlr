@@ -13,6 +13,7 @@ import { MobileTabBar } from "@/components/layout/MobileTabBar";
 const links = [
   { href: "/", label: "Home" },
   { href: "/search", label: "Discover" },
+  { href: "/tonight", label: "Tonight" },
   { href: "/library", label: "Library" },
   { href: "/dashboard", label: "Dashboard" },
 ];

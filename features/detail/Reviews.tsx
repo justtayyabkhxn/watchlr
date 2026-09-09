@@ -9,6 +9,7 @@ import type { MediaType } from "@/types/tmdb";
 import { Button } from "@/components/ui/Button";
 import { Textarea } from "@/components/ui/Textarea";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { QueryError } from "@/components/ui/QueryError";
 
 interface ReviewItem {
   id: string;
@@ -44,10 +45,13 @@ export function Reviews({ tmdbId, mediaType }: { tmdbId: number; mediaType: Medi
   const [content, setContent] = useState("");
   const [hasSpoilers, setHasSpoilers] = useState(false);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["reviews", mediaType, tmdbId],
     queryFn: async (): Promise<{ reviews: ReviewItem[] }> => {
       const res = await fetch(`/api/reviews?tmdbId=${tmdbId}&mediaType=${mediaType}`);
+      // Without this check a failed request parsed into `{}`, and the panel
+      // said "no reviews yet" for what was actually a broken fetch.
+      if (!res.ok) throw new Error("Couldn't load reviews");
       return res.json();
     },
   });
@@ -123,9 +127,11 @@ export function Reviews({ tmdbId, mediaType }: { tmdbId: number; mediaType: Medi
 
       {isLoading ? (
         <div className="space-y-4">
-          <Skeleton className="h-24 w-full rounded-3xl" />
-          <Skeleton className="h-24 w-full rounded-3xl" />
+          <Skeleton index={0} className="h-24 w-full rounded-3xl" />
+          <Skeleton index={1} className="h-24 w-full rounded-3xl" />
         </div>
+      ) : isError ? (
+        <QueryError what="the reviews" error={error} onRetry={refetch} compact />
       ) : reviews.length === 0 ? (
         <p className="flex items-center gap-2 text-sm text-muted">
           <MessageSquareQuote className="size-4" aria-hidden />

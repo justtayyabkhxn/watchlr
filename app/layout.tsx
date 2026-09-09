@@ -3,6 +3,7 @@ import { Analytics } from "@vercel/analytics/react";
 import { Bricolage_Grotesque } from "next/font/google";
 import { Providers } from "./providers";
 import { SmoothScroll } from "@/components/layout/SmoothScroll";
+import { RouteProgress } from "@/components/layout/RouteProgress";
 import "./globals.css";
 
 const bricolage = Bricolage_Grotesque({
@@ -57,6 +58,7 @@ export default function RootLayout({
           />
         </div>
         <SmoothScroll />
+        <RouteProgress />
         <Providers>{children}</Providers>
         <Analytics />
       </body>
