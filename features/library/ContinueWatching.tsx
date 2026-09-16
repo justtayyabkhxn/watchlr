@@ -72,6 +72,22 @@ export function ContinueWatching() {
     },
   });
 
+  // Finished titles keep their stream-play markers, but the user is done with
+  // them — pull the completed shelf so we can drop those from the list below.
+  const {
+    data: completed,
+    isLoading: completedLoading,
+    isError: completedError,
+    refetch: refetchCompleted,
+  } = useQuery({
+    queryKey: ["library", "completed"],
+    queryFn: async (): Promise<{ entries: WatchingEntry[] }> => {
+      const res = await fetch("/api/library?status=completed");
+      if (!res.ok) throw new Error("Failed to load library");
+      return res.json();
+    },
+  });
+
   const remove = useMutation({
     mutationFn: async (e: HistoryEntry) => {
       // Dismissing removes only what put the card here: the stream play
@@ -96,7 +112,7 @@ export function ContinueWatching() {
     },
   });
 
-  if (isLoading || watchingLoading) {
+  if (isLoading || watchingLoading || completedLoading) {
     return (
       <div>
         <LoadingMessage context="library" className="mb-5" />
@@ -109,11 +125,11 @@ export function ContinueWatching() {
     );
   }
 
-  if (isError || watchingError) {
+  if (isError || watchingError || completedError) {
     return (
       <QueryError
         what="where you left off"
-        onRetry={() => Promise.all([refetch(), refetchWatching()])}
+        onRetry={() => Promise.all([refetch(), refetchWatching(), refetchCompleted()])}
       />
     );
   }
@@ -133,12 +149,15 @@ export function ContinueWatching() {
       fromStream: false,
     })),
   ];
+  const completedKeys = new Set(
+    (completed?.entries ?? []).map((e) => `${e.mediaType}-${e.tmdbId}`),
+  );
   const seen = new Set<string>();
   const entries = merged
     .sort((a, b) => new Date(b.watchedAt).getTime() - new Date(a.watchedAt).getTime())
     .filter((e) => {
       const key = `${e.mediaType}-${e.tmdbId}`;
-      if (seen.has(key)) return false;
+      if (seen.has(key) || completedKeys.has(key)) return false;
       seen.add(key);
       return true;
     });

@@ -106,7 +106,7 @@ export async function ContinueWatchingRail() {
   // player (WatchHistory source "stream" — the same data as the library's
   // continue-watching tab) and titles manually marked "watching". Merge
   // both, newest activity first.
-  const [watchingRows, streamRows] = await Promise.all([
+  const [watchingRows, streamRows, completedRows] = await Promise.all([
     Watchlist.find({ userId: session.user.id, status: "watching" })
       .sort({ updatedAt: -1 })
       .limit(12)
@@ -115,7 +115,14 @@ export async function ContinueWatchingRail() {
       .sort({ watchedAt: -1 })
       .limit(40)
       .lean(),
+    // Titles the user finished shouldn't nag them to "continue" — even
+    // though their stream plays still linger in WatchHistory.
+    Watchlist.find({ userId: session.user.id, status: "completed" })
+      .select("tmdbId mediaType")
+      .lean(),
   ]);
+
+  const completed = new Set(completedRows.map((r) => `${r.mediaType}-${r.tmdbId}`));
 
   const merged = [
     ...streamRows.map((r) => ({ row: r, at: r.watchedAt ?? new Date(0), stream: true as const })),
@@ -126,7 +133,7 @@ export async function ContinueWatchingRail() {
   const items: { item: MediaItem; href: string }[] = [];
   for (const { row, stream } of merged) {
     const key = `${row.mediaType}-${row.tmdbId}`;
-    if (seen.has(key)) continue;
+    if (seen.has(key) || completed.has(key)) continue;
     seen.add(key);
     // Stream rows carry the resume point — deep-link the same way the
     // library's continue-watching tab does instead of dropping the user at
