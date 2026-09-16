@@ -108,3 +108,19 @@ export function formatHours(minutes: number): string {
   const h = Math.round(minutes / 60);
   return h >= 1 ? `${h}h` : `${minutes}m`;
 }
+
+/**
+ * Coarse age of a date, for "added 2 years ago" copy. Deliberately blunt —
+ * the archaeologist's argument is "this has been here a while", and
+ * "1 year" makes that better than "13 months, 4 days".
+ */
+export function relativeAge(from: Date | string, now: Date = new Date()): string {
+  const then = typeof from === "string" ? new Date(from) : from;
+  const days = Math.floor((now.getTime() - then.getTime()) / 86_400_000);
+  if (!Number.isFinite(days) || days < 1) return "today";
+  if (days < 30) return `${days} day${days === 1 ? "" : "s"}`;
+  const months = Math.floor(days / 30);
+  if (months < 12) return `${months} month${months === 1 ? "" : "s"}`;
+  const years = Math.floor(days / 365);
+  return `${years} year${years === 1 ? "" : "s"}`;
+}

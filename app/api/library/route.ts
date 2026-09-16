@@ -5,6 +5,9 @@ import { LIBRARY_STATUSES, Watchlist, type LibraryStatus } from "@/models/Watchl
 import { WatchHistory } from "@/models/WatchHistory";
 import { checkWatchMilestone } from "@/lib/notifications";
 
+/** One bulk clear is one dig's worth of rows, and nothing larger. */
+const BULK_DELETE_CAP = 40;
+
 export async function GET(req: NextRequest) {
   const userId = await getUserId();
   if (!userId) return NextResponse.json({ error: "Not signed in." }, { status: 401 });
@@ -110,6 +113,44 @@ export async function DELETE(req: NextRequest) {
   const p = req.nextUrl.searchParams;
   const tmdbId = Number(p.get("tmdbId"));
   const mediaType = p.get("mediaType");
+
+  // `?tmdbId=` removes one; a JSON body `{ items: [...] }` removes a batch
+  // (the archaeologist's bulk clear), same shape as the notifications route.
+  if (!tmdbId && !mediaType) {
+    const body = await req.json().catch(() => null);
+    const raw: unknown[] | null = Array.isArray(body?.items) ? body.items : null;
+    if (!raw) return NextResponse.json({ error: "Invalid params." }, { status: 400 });
+
+    const items = raw
+      .filter(
+        (it): it is { tmdbId: number; mediaType: "movie" | "tv" } => {
+          const o = it as Record<string, unknown>;
+          return (
+            Number.isInteger(o?.tmdbId) &&
+            (o?.mediaType === "movie" || o?.mediaType === "tv")
+          );
+        },
+      )
+      .slice(0, BULK_DELETE_CAP);
+    if (items.length === 0) {
+      return NextResponse.json({ error: "No valid items." }, { status: 400 });
+    }
+
+    await connectDB();
+    /* Scoped to one status when the caller names one. The bulk path can
+       address any row in the library, so the archaeologist pins it to
+       want_to_watch — a malformed payload then clears dead shelf entries at
+       worst, never someone's favourites. */
+    const query: Record<string, unknown> = {
+      userId,
+      $or: items.map((it) => ({ tmdbId: it.tmdbId, mediaType: it.mediaType })),
+    };
+    if (LIBRARY_STATUSES.includes(body.status)) query.status = body.status;
+
+    const { deletedCount } = await Watchlist.deleteMany(query);
+    return NextResponse.json({ ok: true, deleted: deletedCount });
+  }
+
   if (!tmdbId || (mediaType !== "movie" && mediaType !== "tv")) {
     return NextResponse.json({ error: "Invalid params." }, { status: 400 });
   }

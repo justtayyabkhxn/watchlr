@@ -352,6 +352,121 @@ Return JSON exactly like: {"shelf":[{"index":3,"reason":"..."}],"fresh":[{"title
   return { shelf, fresh };
 }
 
+/* ---------- the watchlist archaeologist ---------- */
+
+export interface DustEntry extends TriageEntry {
+  /** How long it has sat untouched, already humanised: "2 years", "8 months". */
+  age: string;
+}
+
+export interface ArchaeologyResult {
+  /** The opening line: names the real number, says the quiet part. */
+  verdict: string;
+  keep: { index: number; reason: string }[];
+  clear: { index: number; reason: string }[];
+}
+
+/**
+ * Audit a want-to-watch pile that has stopped moving: which few are still
+ * worth keeping, and which the user is quietly never going to watch.
+ *
+ * Same pipeline as generateTriage — number the pile, get indices and reasons
+ * back — with one addition: each entry carries how long it has been sitting
+ * there, because age is the whole argument this prompt is making.
+ *
+ * `clear` is advisory, not exhaustive. Models reliably name a handful of
+ * titles and quietly drop the rest, so the caller derives the real clear set
+ * as "everything not kept" and uses these reasons where they exist. That way
+ * a lazy response still produces a complete, correct audit.
+ */
+export async function generateArchaeology(
+  entries: DustEntry[],
+): Promise<ArchaeologyResult> {
+  const client = getClient();
+  const list = entries
+    .map(
+      (e) =>
+        // "untouched for", never "added" — age comes from updatedAt, so a
+        // re-shelved title is old news, not a fresh addition. Saying "added"
+        // would invite the model to date it wrong out loud.
+        `${e.index}. ${e.title} (${e.year}, ${e.mediaType}${e.genres.length ? `, ${e.genres.join("/")}` : ""}) — untouched for ${e.age}`,
+    )
+    .join("\n");
+
+  const keepTarget = Math.min(3, entries.length);
+
+  const response = await client.chat.completions.create({
+    model: AI_MODEL,
+    max_tokens: 1200,
+    // No user input to vary on, so the temperature is what keeps a re-dig of
+    // an unchanged pile from reading like a photocopy of the last one.
+    temperature: 0.85,
+    response_format: { type: "json_object" },
+    messages: [
+      {
+        role: "system",
+        content:
+          "You are Watchlr's watchlist archaeologist. You dig through want-to-watch piles that stopped moving and say the thing the user already knows: they are not going to watch most of this. You are affectionate, never scolding — the point is a shelf they'd actually use, not guilt. Respond with strict JSON only.",
+      },
+      {
+        role: "user",
+        content: `These ${entries.length} titles have been sitting on the user's want-to-watch shelf, untouched, longest-untouched first. The ages are how long each has gone without being opened or re-shelved — not when it was added, so never claim a date they joined the list:
+
+${list}
+
+Three jobs:
+1. "verdict": open with the honest read on this pile. Name the real number (${entries.length}), say roughly how many they're realistically never getting to, and land on keeping a few. Two sentences, max 40 words, lowercase-friendly, dry and warm — never preachy, never a lecture about productivity.
+2. "keep": the ${keepTarget} genuinely worth rescuing, referenced ONLY by the numbers above. Favour the ones with real staying power over the ones they added on a whim. Each "reason" argues for it in one line, max 12 words.
+3. "clear": the ones to let go, by number, up to 20 of them. Each "reason" is a short dismissal, max 8 words — "you'd have watched it by now", "this was a phase". Never cruel about the film itself, only about the odds.
+
+A number appears in "keep" or in "clear", never both.
+
+Return JSON exactly like: {"verdict":"...","keep":[{"index":3,"reason":"..."}],"clear":[{"index":7,"reason":"..."}]}`,
+      },
+    ],
+  });
+
+  const text = response.choices[0]?.message?.content ?? "{}";
+  let parsed: { verdict?: unknown; keep?: unknown; clear?: unknown };
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    throw new Error("Model returned invalid JSON");
+  }
+
+  const valid = new Set(entries.map((e) => e.index));
+  // One shared seen-set across both lists: a title the model argued for
+  // keeping must not also show up on the chopping block, and "keep" is
+  // read first so it wins that collision.
+  const seen = new Set<number>();
+  const picks = (raw: unknown, cap: number, reasonLength: number) =>
+    (Array.isArray(raw) ? raw : [])
+      .filter(
+        (p): p is { index: number; reason: string } =>
+          Number.isInteger(p?.index) && valid.has(p.index) && typeof p?.reason === "string",
+      )
+      .filter((p) => {
+        if (seen.has(p.index)) return false;
+        seen.add(p.index);
+        return true;
+      })
+      .map((p) => ({ index: p.index, reason: p.reason.slice(0, reasonLength) }))
+      .slice(0, cap);
+
+  const keep = picks(parsed.keep, 4, 120);
+  const clear = picks(parsed.clear, 20, 60);
+
+  const verdict =
+    typeof parsed.verdict === "string" && parsed.verdict.trim()
+      ? parsed.verdict.trim().slice(0, 240)
+      : "";
+
+  if (!verdict && keep.length === 0 && clear.length === 0) {
+    throw new Error("Empty archaeology");
+  }
+  return { verdict, keep, clear };
+}
+
 /* ---------- the internet's verdict ---------- */
 
 export interface ReviewExcerpt {

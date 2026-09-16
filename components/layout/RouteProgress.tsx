@@ -87,8 +87,21 @@ function RouteProgressInner() {
       if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.defaultPrevented) {
         return;
       }
-      const anchor = (e.target as Element | null)?.closest?.("a[href]") as HTMLAnchorElement | null;
-      if (!anchor || anchor.target === "_blank" || anchor.hasAttribute("download")) return;
+      /* Nearest of "a link" or "a control", not just the nearest link. Cards
+         nest real buttons inside their <Link> (the poster's want-to-watch and
+         watched actions), and those handlers call preventDefault — so the
+         click reaches the anchor in the capture phase but never becomes a
+         navigation. Starting here would leave the indicator running with
+         nothing to stop it: no pathname change, so the effect below never
+         fires, and nine seconds later the user is told the page failed to
+         load while the thing they clicked worked fine. A control closer to
+         the target than the anchor is handling this click itself. */
+      const hit = (e.target as Element | null)?.closest?.(
+        "a[href], button, input, select, textarea, [role='button']",
+      );
+      if (!hit || hit.tagName !== "A") return;
+      const anchor = hit as HTMLAnchorElement;
+      if (anchor.target === "_blank" || anchor.hasAttribute("download")) return;
       // Opt-out for links that deliberately don't feel like a page change.
       if (anchor.dataset.noNavProgress !== undefined) return;
 

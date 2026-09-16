@@ -55,6 +55,14 @@ const SCRIPTS = {
     "vetoing the three-hour one",
     "narrowing it to three",
   ],
+  /** watchlist archaeologist — auditing the dead pile */
+  archaeology: [
+    "carbon-dating your watchlist",
+    "brushing the dust off",
+    "reading the timestamps",
+    "working out what you meant in 2023",
+    "deciding what's worth keeping",
+  ],
   /** vibe search */
   vibe: [
     "reading your mind",

@@ -11,6 +11,7 @@ import {
   RailSkeleton,
 } from "@/features/home/Rails";
 import { AIPicks } from "@/features/home/AIPicks";
+import { ArchaeologyPrompt } from "@/features/home/ArchaeologyPrompt";
 
 export default async function HomePage() {
   let heroItems: MediaItem[] = [];
@@ -50,6 +51,12 @@ export default async function HomePage() {
           }
         >
           <AIPicks />
+        </Suspense>
+
+        {/* Renders nothing unless the want-to-watch shelf has actually gone
+            stale, so it never costs a signed-out visitor a blank card. */}
+        <Suspense fallback={null}>
+          <ArchaeologyPrompt />
         </Suspense>
 
         <Suspense fallback={<RailSkeleton />}>
