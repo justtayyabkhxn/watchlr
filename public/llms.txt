@@ -1,0 +1,27 @@
+# Watchlr
+
+> Watchlr is a movie and TV tracker with AI-powered summaries, ending explanations, spoiler-free reviews, and a mood-based recommendation chat. It helps people track what they watch, want to watch, and dropped — and decide what to watch tonight.
+
+Watchlr is a free web app (also available as an Android app) built on data from TMDB. It is created by Tayyab Khan (https://justtayyabkhan.vercel.app/).
+
+## What Watchlr does
+
+- Track every film and episode: statuses for want-to-watch, watching, completed, favorite, dropped, and hidden. Movies log with one click; TV shows track per-episode progress.
+- Rate and review titles (out of 10) and build custom collections.
+- AI takes per title: five summary flavors — spoiler-free, detailed, ending explained, themes, and should-I-watch — plus a per-title chat that avoids spoilers.
+- "Tonight": a conversational recommendation page. Describe your mood in plain words and Watchlr suggests titles with real posters, checking your own want-to-watch list before the wider catalogue.
+- Daily AI picks: curated suggestions refreshed each day, each with a one-line reason.
+- A stats dashboard: hours watched, weekly rhythm, genre breakdown, and a consistency heatmap.
+- Public profiles and shareable lists for comparing taste and settling arguments.
+
+## Public pages
+
+- Home: https://watchlr.justtayyabkhan.com/
+- Movie page: https://watchlr.justtayyabkhan.com/movie/{tmdb_id}
+- TV show page: https://watchlr.justtayyabkhan.com/tv/{tmdb_id}
+- Public list: https://watchlr.justtayyabkhan.com/list/{id}
+- Public profile: https://watchlr.justtayyabkhan.com/{username}
+
+## Attribution
+
+Poster and title data comes from The Movie Database (TMDB). Watchlr uses the TMDB API but is not endorsed or certified by TMDB.

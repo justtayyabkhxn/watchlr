@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { Types } from "mongoose";
 import { Award, CalendarDays, Popcorn, TriangleAlert } from "lucide-react";
 import { connectDB } from "@/lib/db";
+import { SITE_URL } from "@/lib/site";
 import { User } from "@/models/User";
 import { WatchHistory } from "@/models/WatchHistory";
 import { Watchlist } from "@/models/Watchlist";
@@ -201,7 +202,27 @@ export async function generateMetadata({
   params: Promise<{ username: string }>;
 }): Promise<Metadata> {
   const { username } = await params;
-  return { title: `@${username.toLowerCase()}` };
+  const profile = await loadProfile(decodeURIComponent(username));
+  if (!profile) return { title: `@${username.toLowerCase()}` };
+  const description =
+    profile.bio ||
+    `${profile.name} (@${profile.username}) has logged ${profile.totals.titles} titles on Watchlr. See their watch history, favorites and reviews.`;
+  return {
+    title: `${profile.name} (@${profile.username})`,
+    description,
+    alternates: { canonical: `/${profile.username}` },
+    openGraph: {
+      type: "profile",
+      title: `${profile.name} on Watchlr`,
+      description,
+      url: `${SITE_URL}/${profile.username}`,
+    },
+    twitter: {
+      card: "summary",
+      title: `${profile.name} on Watchlr`,
+      description,
+    },
+  };
 }
 
 export default async function PublicProfilePage({

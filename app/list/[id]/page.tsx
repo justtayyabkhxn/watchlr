@@ -7,6 +7,7 @@ import { connectDB } from "@/lib/db";
 import { Collection } from "@/models/Collection";
 import { User } from "@/models/User";
 import { tmdbImage } from "@/lib/media";
+import { SITE_URL } from "@/lib/site";
 import { CopyLinkButton } from "@/features/library/ShareListButton";
 
 interface CollectionItem {
@@ -40,14 +41,23 @@ export async function generateMetadata({
   const list = await loadList(id);
   if (!list) return { title: "List not found" };
   const poster = tmdbImage(list.items[0]?.posterPath ?? null, "w500");
+  const description =
+    list.description || `${list.items.length} titles curated by ${list.ownerName}.`;
   return {
     title: `${list.name} — a watchlr list`,
-    description:
-      list.description || `${list.items.length} titles curated by ${list.ownerName}.`,
+    description,
+    alternates: { canonical: `/list/${id}` },
     openGraph: {
+      type: "website",
       title: list.name,
-      description:
-        list.description || `${list.items.length} titles curated by ${list.ownerName}.`,
+      description,
+      url: `${SITE_URL}/list/${id}`,
+      images: poster ? [poster] : undefined,
+    },
+    twitter: {
+      card: poster ? "summary_large_image" : "summary",
+      title: list.name,
+      description,
       images: poster ? [poster] : undefined,
     },
   };
