@@ -45,8 +45,10 @@ export function NotificationBell() {
       if (!res.ok) return { unreadCount: 0, notifications: [] };
       return res.json();
     },
-    // Light background polling so achievements/reminders surface without a reload.
-    refetchInterval: 60_000,
+    // Light background polling so achievements/reminders surface without a
+    // reload. Every poll is a function invocation, so keep it infrequent —
+    // focus refetch below still picks up new ones when the user comes back.
+    refetchInterval: 5 * 60_000,
     refetchOnWindowFocus: true,
   });
 

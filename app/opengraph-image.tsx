@@ -5,7 +5,8 @@ import { SITE_NAME } from "@/lib/site";
 // openGraph.images (movie, tv, list) override this; everything else (home,
 // profiles, auth) gets this card. Rendered in the site palette — beige page,
 // ink text, an amber dot grid, and the accent underline from the UI.
-export const runtime = "edge";
+// No runtime override: with no dynamic inputs this is rendered once at build
+// and served as a static PNG, instead of re-drawn on every crawler/share hit.
 export const alt = "Watchlr — track what you watch";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";

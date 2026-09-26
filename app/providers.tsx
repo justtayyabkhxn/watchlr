@@ -28,7 +28,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <SessionProvider>
+    // Don't re-hit /api/auth/session every time the tab regains focus — the
+    // JWT session is long-lived and each check is a billed function call.
+    <SessionProvider refetchOnWindowFocus={false}>
       <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
     </SessionProvider>
   );

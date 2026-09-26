@@ -22,6 +22,14 @@ import { SectionHeader } from "@/components/ui/SectionHeader";
 // warm response without going stale.
 export const revalidate = 86400;
 
+// An empty list opts the dynamic segment into on-demand ISR: nothing is
+// prebuilt, but each id is rendered once on first visit and then served from
+// the cache. Without this, Next renders the page on every request and the
+// `revalidate` above is ignored.
+export async function generateStaticParams() {
+  return [];
+}
+
 async function loadShow(id: string): Promise<TmdbTvDetails> {
   const numId = Number(id);
   if (!Number.isInteger(numId) || numId <= 0) notFound();
