@@ -2,7 +2,7 @@
 
 > Watchlr is a movie and TV tracker with AI-powered summaries, ending explanations, spoiler-free reviews, and a mood-based recommendation chat. It helps people track what they watch, want to watch, and dropped — and decide what to watch tonight.
 
-Watchlr is a free web app (also available as an Android app) built on data from TMDB. It is created by Tayyab Khan (https://justtayyabkhan.vercel.app/).
+Watchlr is a free web app (also available as an Android app) built on data from TMDB. It is created by Tayyab Khan (https://justtayyabkhan.com/).
 
 ## What Watchlr does
 

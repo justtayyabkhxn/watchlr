@@ -32,7 +32,7 @@ export const metadata: Metadata = {
     "watch history",
     "watchlr",
   ],
-  authors: [{ name: "Tayyab Khan", url: "https://justtayyabkhan.vercel.app/" }],
+  authors: [{ name: "Tayyab Khan", url: "https://justtayyabkhan.com/" }],
   creator: "Tayyab Khan",
   alternates: { canonical: "/" },
   openGraph: {
@@ -65,7 +65,7 @@ const websiteJsonLd = {
   author: {
     "@type": "Person",
     name: "Tayyab Khan",
-    url: "https://justtayyabkhan.vercel.app/",
+    url: "https://justtayyabkhan.com/",
   },
 };
 
