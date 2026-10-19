@@ -1,4 +1,5 @@
-import mongoose, { Schema, type InferSchemaType, type Model } from "mongoose";
+import { Schema, type InferSchemaType } from "mongoose";
+import { defineModel } from "@/lib/db";
 
 /**
  * Cached Movie of the Night lookups. Availability shifts daily at most,
@@ -25,6 +26,4 @@ export type StreamingAvailabilityDoc = InferSchemaType<
   typeof StreamingAvailabilitySchema
 >;
 
-export const StreamingAvailability: Model<StreamingAvailabilityDoc> =
-  mongoose.models.StreamingAvailability ??
-  mongoose.model("StreamingAvailability", StreamingAvailabilitySchema);
+export const StreamingAvailability = defineModel<StreamingAvailabilityDoc>("StreamingAvailability", StreamingAvailabilitySchema);

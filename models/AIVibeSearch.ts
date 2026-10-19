@@ -1,4 +1,5 @@
-import mongoose, { Schema, type InferSchemaType, type Model } from "mongoose";
+import { Schema, type InferSchemaType } from "mongoose";
+import { defineModel } from "@/lib/db";
 
 const VibeItemSchema = new Schema(
   {
@@ -33,6 +34,4 @@ AIVibeSearchSchema.index({ createdAt: 1 }, { expireAfterSeconds: 60 * 60 * 24 * 
 
 export type AIVibeSearchDoc = InferSchemaType<typeof AIVibeSearchSchema>;
 
-export const AIVibeSearch: Model<AIVibeSearchDoc> =
-  mongoose.models.AIVibeSearch ??
-  mongoose.model("AIVibeSearch", AIVibeSearchSchema);
+export const AIVibeSearch = defineModel<AIVibeSearchDoc>("AIVibeSearch", AIVibeSearchSchema);

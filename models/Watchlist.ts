@@ -1,4 +1,5 @@
-import mongoose, { Schema, type InferSchemaType, type Model } from "mongoose";
+import { Schema, type InferSchemaType } from "mongoose";
+import { defineModel } from "@/lib/db";
 
 export const LIBRARY_STATUSES = [
   "watching",
@@ -31,5 +32,4 @@ WatchlistSchema.index({ userId: 1, status: 1, updatedAt: -1 });
 
 export type WatchlistDoc = InferSchemaType<typeof WatchlistSchema>;
 
-export const Watchlist: Model<WatchlistDoc> =
-  mongoose.models.Watchlist ?? mongoose.model("Watchlist", WatchlistSchema);
+export const Watchlist = defineModel<WatchlistDoc>("Watchlist", WatchlistSchema);

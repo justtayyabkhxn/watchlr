@@ -1,4 +1,5 @@
-import mongoose, { Schema, type InferSchemaType, type Model } from "mongoose";
+import { Schema, type InferSchemaType } from "mongoose";
+import { defineModel } from "@/lib/db";
 
 const RecentSearchSchema = new Schema(
   {
@@ -13,6 +14,4 @@ RecentSearchSchema.index({ userId: 1, query: 1 }, { unique: true });
 
 export type RecentSearchDoc = InferSchemaType<typeof RecentSearchSchema>;
 
-export const RecentSearch: Model<RecentSearchDoc> =
-  mongoose.models.RecentSearch ??
-  mongoose.model("RecentSearch", RecentSearchSchema);
+export const RecentSearch = defineModel<RecentSearchDoc>("RecentSearch", RecentSearchSchema);

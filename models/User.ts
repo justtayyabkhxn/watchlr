@@ -1,4 +1,5 @@
-import mongoose, { Schema, type InferSchemaType, type Model } from "mongoose";
+import { Schema, type InferSchemaType } from "mongoose";
+import { defineModel } from "@/lib/db";
 
 const UserSchema = new Schema(
   {
@@ -36,5 +37,4 @@ const UserSchema = new Schema(
 
 export type UserDoc = InferSchemaType<typeof UserSchema>;
 
-export const User: Model<UserDoc> =
-  mongoose.models.User ?? mongoose.model("User", UserSchema);
+export const User = defineModel<UserDoc>("User", UserSchema);

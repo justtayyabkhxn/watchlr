@@ -1,4 +1,5 @@
-import mongoose, { Schema, type InferSchemaType, type Model } from "mongoose";
+import { Schema, type InferSchemaType } from "mongoose";
+import { defineModel } from "@/lib/db";
 
 const SuggestedItemSchema = new Schema(
   {
@@ -49,6 +50,4 @@ const AIConversationSchema = new Schema(
 
 export type AIConversationDoc = InferSchemaType<typeof AIConversationSchema>;
 
-export const AIConversation: Model<AIConversationDoc> =
-  mongoose.models.AIConversation ??
-  mongoose.model("AIConversation", AIConversationSchema);
+export const AIConversation = defineModel<AIConversationDoc>("AIConversation", AIConversationSchema);

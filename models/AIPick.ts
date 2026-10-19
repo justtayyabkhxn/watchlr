@@ -1,4 +1,5 @@
-import mongoose, { Schema, type InferSchemaType, type Model } from "mongoose";
+import { Schema, type InferSchemaType } from "mongoose";
+import { defineModel } from "@/lib/db";
 
 const PickedItemSchema = new Schema(
   {
@@ -31,5 +32,4 @@ const AIPickSchema = new Schema(
 
 export type AIPickDoc = InferSchemaType<typeof AIPickSchema>;
 
-export const AIPick: Model<AIPickDoc> =
-  mongoose.models.AIPick ?? mongoose.model("AIPick", AIPickSchema);
+export const AIPick = defineModel<AIPickDoc>("AIPick", AIPickSchema);

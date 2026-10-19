@@ -1,4 +1,5 @@
-import mongoose, { Schema, type InferSchemaType, type Model } from "mongoose";
+import { Schema, type InferSchemaType } from "mongoose";
+import { defineModel } from "@/lib/db";
 
 /**
  * Cached "your taste, explained" roast per user. `signature` fingerprints
@@ -16,6 +17,4 @@ const AITasteProfileSchema = new Schema(
 
 export type AITasteProfileDoc = InferSchemaType<typeof AITasteProfileSchema>;
 
-export const AITasteProfile: Model<AITasteProfileDoc> =
-  mongoose.models.AITasteProfile ??
-  mongoose.model("AITasteProfile", AITasteProfileSchema);
+export const AITasteProfile = defineModel<AITasteProfileDoc>("AITasteProfile", AITasteProfileSchema);

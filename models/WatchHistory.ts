@@ -1,4 +1,5 @@
-import mongoose, { Schema, type InferSchemaType, type Model } from "mongoose";
+import { Schema, type InferSchemaType } from "mongoose";
+import { defineModel } from "@/lib/db";
 
 const WatchHistorySchema = new Schema(
   {
@@ -34,6 +35,4 @@ WatchHistorySchema.index(
 
 export type WatchHistoryDoc = InferSchemaType<typeof WatchHistorySchema>;
 
-export const WatchHistory: Model<WatchHistoryDoc> =
-  mongoose.models.WatchHistory ??
-  mongoose.model("WatchHistory", WatchHistorySchema);
+export const WatchHistory = defineModel<WatchHistoryDoc>("WatchHistory", WatchHistorySchema);

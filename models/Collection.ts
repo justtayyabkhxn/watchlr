@@ -1,4 +1,5 @@
-import mongoose, { Schema, type InferSchemaType, type Model } from "mongoose";
+import { Schema, type InferSchemaType } from "mongoose";
+import { defineModel } from "@/lib/db";
 
 const CollectionItemSchema = new Schema(
   {
@@ -24,5 +25,4 @@ CollectionSchema.index({ userId: 1, updatedAt: -1 });
 
 export type CollectionDoc = InferSchemaType<typeof CollectionSchema>;
 
-export const Collection: Model<CollectionDoc> =
-  mongoose.models.Collection ?? mongoose.model("Collection", CollectionSchema);
+export const Collection = defineModel<CollectionDoc>("Collection", CollectionSchema);

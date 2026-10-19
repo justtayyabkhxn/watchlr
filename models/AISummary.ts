@@ -1,4 +1,5 @@
-import mongoose, { Schema, type InferSchemaType, type Model } from "mongoose";
+import { Schema, type InferSchemaType } from "mongoose";
+import { defineModel } from "@/lib/db";
 
 export const SUMMARY_TYPES = [
   "spoiler_free",
@@ -30,5 +31,4 @@ AISummarySchema.index(
 
 export type AISummaryDoc = InferSchemaType<typeof AISummarySchema>;
 
-export const AISummary: Model<AISummaryDoc> =
-  mongoose.models.AISummary ?? mongoose.model("AISummary", AISummarySchema);
+export const AISummary = defineModel<AISummaryDoc>("AISummary", AISummarySchema);

@@ -1,4 +1,5 @@
-import mongoose, { Schema, type InferSchemaType, type Model } from "mongoose";
+import { Schema, type InferSchemaType } from "mongoose";
+import { defineModel } from "@/lib/db";
 
 const RatingSchema = new Schema(
   {
@@ -15,5 +16,4 @@ RatingSchema.index({ tmdbId: 1, mediaType: 1 });
 
 export type RatingDoc = InferSchemaType<typeof RatingSchema>;
 
-export const Rating: Model<RatingDoc> =
-  mongoose.models.Rating ?? mongoose.model("Rating", RatingSchema);
+export const Rating = defineModel<RatingDoc>("Rating", RatingSchema);
