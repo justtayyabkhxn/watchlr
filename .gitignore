@@ -62,3 +62,6 @@ next-env.d.ts
 
 # dev screenshots
 *-shot.png
+
+# local tool clone, not part of the app
+brag/
