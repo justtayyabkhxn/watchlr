@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import { StreamingAvailability } from "@/models/StreamingAvailability";
 import {
-  DEFAULT_COUNTRY,
+  defaultCountry,
   getStreamingOptions,
   isStreamingConfigured,
 } from "@/lib/streaming";
@@ -15,7 +15,7 @@ export async function GET(req: Request) {
   const tmdbId = Number(url.searchParams.get("tmdbId"));
   const mediaType = url.searchParams.get("mediaType");
   const country = (
-    url.searchParams.get("country") ?? DEFAULT_COUNTRY
+    url.searchParams.get("country") ?? defaultCountry()
   ).toLowerCase();
 
   if (

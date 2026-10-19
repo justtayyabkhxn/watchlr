@@ -4,8 +4,10 @@ import bcrypt from "bcryptjs";
 import { connectDB } from "@/lib/db";
 import { User } from "@/models/User";
 
-export const { handlers, auth, signIn, signOut } = NextAuth({
-  secret: process.env.NEXTAUTH_SECRET ?? process.env.AUTH_SECRET,
+/* Lazy config: on Cloudflare Workers process.env can be empty when this module
+   is first evaluated, so read env vars per request instead of at import time. */
+export const { handlers, auth, signIn, signOut } = NextAuth(() => ({
+  secret: process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET,
   trustHost: true,
   session: { strategy: "jwt" },
   pages: { signIn: "/login" },
@@ -48,7 +50,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return session;
     },
   },
-});
+}));
 
 /** Returns the authed user's id, or null. For API routes and RSC. */
 export async function getUserId(): Promise<string | null> {

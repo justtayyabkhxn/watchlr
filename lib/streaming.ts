@@ -11,9 +11,9 @@ import type { StreamingOption, StreamingOptionType } from "@/types/streaming";
 
 const HOST = "streaming-availability.p.rapidapi.com";
 
-export const DEFAULT_COUNTRY = (
-  process.env.STREAMING_REGION ?? "in"
-).toLowerCase();
+export function defaultCountry(): string {
+  return (process.env.STREAMING_REGION ?? "in").toLowerCase();
+}
 
 export function isStreamingConfigured(): boolean {
   return Boolean(process.env.RAPIDAPI_KEY);
@@ -104,7 +104,7 @@ function dedupe(options: RawStreamingOption[]): StreamingOption[] {
 export async function getStreamingOptions(
   tmdbId: number,
   mediaType: MediaType,
-  country: string = DEFAULT_COUNTRY,
+  country: string = defaultCountry(),
 ): Promise<StreamingOption[]> {
   const key = process.env.RAPIDAPI_KEY;
   if (!key) throw new StreamingError("RAPIDAPI_KEY is not set", 500);

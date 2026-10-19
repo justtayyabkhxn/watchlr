@@ -1,0 +1,29 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // Must match the Worker's name in the Cloudflare dashboard.
+  "name": "watchlr",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "services": [
+    {
+      "binding": "WORKER_SELF_REFERENCE",
+      "service": "watchlr"
+    }
+  ],
+  "observability": {
+    "enabled": true
+  },
+  // Keep dashboard-managed variables across `wrangler deploy`.
+  "keep_vars": true,
+  // Non-secret values only. API keys, MONGODB_URI and AUTH_SECRET are
+  // Cloudflare secrets (dashboard or `wrangler secret put`), never committed.
+  "vars": {
+    "NEXTAUTH_URL": "https://watchlr.justtayyabkhan.com",
+    "AUTH_URL": "https://watchlr.justtayyabkhan.com"
+  }
+}

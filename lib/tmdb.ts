@@ -19,11 +19,13 @@ import type {
  * alternate that often works. TMDB_API_BASE lets you point at your
  * own proxy (e.g. a Cloudflare Worker) when both are blocked.
  */
-const HOSTS = [
-  ...(process.env.TMDB_API_BASE ? [process.env.TMDB_API_BASE.replace(/\/$/, "")] : []),
-  "https://api.themoviedb.org/3",
-  "https://api.tmdb.org/3",
-];
+function hosts(): string[] {
+  return [
+    ...(process.env.TMDB_API_BASE ? [process.env.TMDB_API_BASE.replace(/\/$/, "")] : []),
+    "https://api.themoviedb.org/3",
+    "https://api.tmdb.org/3",
+  ];
+}
 
 class TmdbError extends Error {
   constructor(
@@ -52,6 +54,7 @@ async function tmdb<T>(
 
   // Two rounds across the host list: absorbs transient ECONNRESETs and
   // falls back to the alternate host when the primary is unreachable.
+  const HOSTS = hosts();
   const attempts = [...HOSTS, ...HOSTS];
   let lastError: unknown;
 
